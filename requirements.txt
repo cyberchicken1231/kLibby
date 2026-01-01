@@ -1,0 +1,9 @@
+# kLibby Requirements
+# Python 3.7+ required
+
+# No external dependencies for core functionality!
+# Using only Python standard library for maximum compatibility on Kindle
+
+# Optional development dependencies:
+# pytest>=7.0.0  # For testing
+# black>=22.0.0  # For code formatting
