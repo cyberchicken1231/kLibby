@@ -1,9 +1,15 @@
 # kLibby Requirements
-# Python 3.7+ required
+# Python 3.10+ required (3.11+ recommended)
 
 # No external dependencies for core functionality!
 # Using only Python standard library for maximum compatibility on Kindle
 
+# Modern Python features used:
+# - PEP 604: Union types using | operator (Python 3.10+)
+# - PEP 585: Built-in generic types (list, dict instead of List, Dict)
+# - dataclasses with field() for default factories
+
 # Optional development dependencies:
 # pytest>=7.0.0  # For testing
 # black>=22.0.0  # For code formatting
+# mypy>=1.0.0    # For type checking

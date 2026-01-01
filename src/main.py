@@ -4,10 +4,11 @@ kLibby - Libby client for jailbroken Kindle
 Main application entry point
 """
 
+from __future__ import annotations
+
 import sys
 import os
 from pathlib import Path
-from typing import List
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -24,9 +25,9 @@ class KLibbyApp:
         """Initialize application"""
         self.client = LibbyClient()
         self.ui = MenuUI()
-        self.current_cards: List[Card] = []
-        self.current_loans: List[Loan] = []
-        self.current_holds: List[Hold] = []
+        self.current_cards: list[Card] = []
+        self.current_loans: list[Loan] = []
+        self.current_holds: list[Hold] = []
 
     def setup_auth(self) -> MenuAction:
         """Setup Libby authentication"""
@@ -296,7 +297,7 @@ class KLibbyApp:
         )
         return MenuAction.BACK
 
-    def get_main_menu(self) -> List[MenuItem]:
+    def get_main_menu(self) -> list[MenuItem]:
         """Get main menu items"""
         if not self.client.is_authenticated():
             return [

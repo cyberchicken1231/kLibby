@@ -3,11 +3,13 @@ Libby API Client
 Based on reverse-engineered API from odmpy and libby-calibre-plugin
 """
 
+from __future__ import annotations
+
 import json
 import urllib.request
 import urllib.parse
 import urllib.error
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any
 from pathlib import Path
 import os
 
@@ -20,7 +22,7 @@ class LibbyClient:
     BASE_URL = "https://sentry-read.svc.overdrive.com"
     TAGS_URL = "https://vandal.svc.overdrive.com"
 
-    def __init__(self, identity_token: Optional[str] = None, settings_path: Optional[str] = None):
+    def __init__(self, identity_token: str | None = None, settings_path: str | None = None):
         """
         Initialize Libby client
 
@@ -61,9 +63,9 @@ class LibbyClient:
         self,
         endpoint: str,
         method: str = 'GET',
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        base_url: Optional[str] = None
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+        base_url: str | None = None
     ) -> Any:
         """
         Make HTTP request to Libby API
@@ -116,7 +118,7 @@ class LibbyClient:
             error_body = e.read().decode('utf-8') if e.fp else ''
             raise Exception(f"HTTP {e.code}: {error_body}")
 
-    def get_chip(self) -> Dict[str, Any]:
+    def get_chip(self) -> dict[str, Any]:
         """
         Get a new identity chip (anonymous authentication)
 
@@ -129,7 +131,7 @@ class LibbyClient:
             self._save_settings()
         return response
 
-    def clone_by_code(self, code: str) -> Dict[str, Any]:
+    def clone_by_code(self, code: str) -> dict[str, Any]:
         """
         Link to existing Libby account using 8-digit sync code
 
@@ -153,7 +155,7 @@ class LibbyClient:
 
         return response
 
-    def sync(self) -> Dict[str, Any]:
+    def sync(self) -> dict[str, Any]:
         """
         Sync account state - retrieves cards, loans, holds
 
@@ -165,7 +167,7 @@ class LibbyClient:
 
         return self._make_request('chip/sync')
 
-    def get_cards(self) -> List[Card]:
+    def get_cards(self) -> list[Card]:
         """
         Get list of library cards
 
@@ -180,7 +182,7 @@ class LibbyClient:
 
         return cards
 
-    def get_loans(self) -> List[Loan]:
+    def get_loans(self) -> list[Loan]:
         """
         Get active loans
 
@@ -195,7 +197,7 @@ class LibbyClient:
 
         return loans
 
-    def get_holds(self) -> List[Hold]:
+    def get_holds(self) -> list[Hold]:
         """
         Get active holds
 
@@ -215,7 +217,7 @@ class LibbyClient:
         card_id: str,
         title_id: str,
         days: int = 21
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Borrow a title
 
@@ -234,7 +236,7 @@ class LibbyClient:
             data={'days': days}
         )
 
-    def return_loan(self, card_id: str, loan_id: str) -> Dict[str, Any]:
+    def return_loan(self, card_id: str, loan_id: str) -> dict[str, Any]:
         """
         Return a loan early
 
@@ -253,7 +255,7 @@ class LibbyClient:
         card_id: str,
         loan_id: str,
         format_type: str = 'ebook-epub-adobe'
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """
         Get download link for a loaned item
 

@@ -7,13 +7,13 @@ kLibby is a pure Python application, so it doesn't require compilation. However,
 ## Prerequisites
 
 ### On Your Development Machine:
-- Python 3.7+ installed
+- Python 3.10+ installed (3.11+ recommended)
 - Git (for cloning the repository)
 
 ### On Your Kindle:
 - Kindle Paperwhite Gen 11 (5th gen Paperwhite)
 - Jailbroken with AdBreak or compatible jailbreak
-- Python 3.x installed (see installation guide)
+- Python 3.10+ installed (3.11+ recommended, see installation guide)
 - SSH access enabled (recommended)
 
 ## Building for Kindle
@@ -110,7 +110,7 @@ This will run kLibby in a terminal window using curses.
 kLibby doesn't require cross-compilation since it's pure Python. However, if you need to bundle Python itself:
 
 - **Architecture**: ARMv7 32-bit hardfloat (armhf)
-- **Python Version**: 3.7+ recommended
+- **Python Version**: 3.10+ required, 3.11+ recommended
 - **OS**: Linux-based Kindle OS
 
 ## Creating a KUAL Extension

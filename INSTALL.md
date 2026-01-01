@@ -59,7 +59,7 @@ If your Kindle is not already jailbroken:
 
 ### Step 2: Install Python on Kindle
 
-kLibby requires Python 3.7 or later. Several methods are available:
+kLibby requires Python 3.10 or later (Python 3.11+ recommended). Several methods are available:
 
 #### Method A: Python via KUAL Extension (Easiest)
 
@@ -71,10 +71,10 @@ kLibby requires Python 3.7 or later. Several methods are available:
 
 #### Method B: Manual Python Installation
 
-1. Download Python 3.x for ARM (armhf):
+1. Download Python 3.11+ for ARM (armhf):
    ```bash
    # On your computer
-   wget https://www.python.org/ftp/python/3.9.16/Python-3.9.16.tgz
+   wget https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz
    ```
 
 2. Cross-compile for ARMv7 or download pre-built binaries from:

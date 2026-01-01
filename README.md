@@ -25,7 +25,7 @@ kLibby allows you to browse, checkout, and read library books from Libby/OverDri
 ## Architecture
 
 kLibby is built using:
-- **Python 3.7+** - Core application logic
+- **Python 3.10+** (3.11+ recommended) - Core application logic with modern type hints
 - **Libby API** - Based on reverse-engineered endpoints from odmpy
 - **E-ink UI** - Lightweight interface optimized for Kindle display
 - **Cross-compiled** - Built for ARMv7 hardfloat architecture

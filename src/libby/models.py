@@ -2,8 +2,10 @@
 Data models for Libby API entities
 """
 
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
 from datetime import datetime
 
 
@@ -12,11 +14,11 @@ class Card:
     """Represents a library card"""
     card_id: str
     library_name: str
-    advantage_key: Optional[str] = None
-    username: Optional[str] = None
+    advantage_key: str | None = None
+    username: str | None = None
 
     @classmethod
-    def from_api(cls, data: Dict[str, Any]) -> 'Card':
+    def from_api(cls, data: dict[str, Any]) -> Card:
         """Create Card from API response"""
         return cls(
             card_id=data.get('cardId', ''),
@@ -31,17 +33,13 @@ class Title:
     """Represents a book/audiobook title"""
     title_id: str
     title: str
-    subtitle: Optional[str] = None
-    authors: List[str] = None
-    cover_url: Optional[str] = None
-    format_type: Optional[str] = None  # ebook, audiobook, magazine
-
-    def __post_init__(self):
-        if self.authors is None:
-            self.authors = []
+    subtitle: str | None = None
+    authors: list[str] = field(default_factory=list)
+    cover_url: str | None = None
+    format_type: str | None = None  # ebook, audiobook, magazine
 
     @classmethod
-    def from_api(cls, data: Dict[str, Any]) -> 'Title':
+    def from_api(cls, data: dict[str, Any]) -> Title:
         """Create Title from API response"""
         authors = []
         if 'firstCreatorName' in data:
@@ -62,12 +60,12 @@ class Loan:
     """Represents an active loan"""
     loan_id: str
     card_id: str
-    title: Title
-    expire_date: Optional[datetime] = None
+    title: Title | None
+    expire_date: datetime | None = None
     is_locked: bool = False
 
     @classmethod
-    def from_api(cls, data: Dict[str, Any]) -> 'Loan':
+    def from_api(cls, data: dict[str, Any]) -> Loan:
         """Create Loan from API response"""
         expire_date = None
         if 'expireDate' in data:
@@ -90,11 +88,11 @@ class Hold:
     """Represents a hold on a title"""
     hold_id: str
     card_id: str
-    title: Title
+    title: Title | None
     available: bool = False
 
     @classmethod
-    def from_api(cls, data: Dict[str, Any]) -> 'Hold':
+    def from_api(cls, data: dict[str, Any]) -> Hold:
         """Create Hold from API response"""
         return cls(
             hold_id=data.get('id', ''),

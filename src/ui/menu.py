@@ -3,8 +3,10 @@ Simple menu-based UI optimized for e-ink displays
 Uses curses for terminal-based interface
 """
 
+from __future__ import annotations
+
 import curses
-from typing import List, Callable, Optional, Any, Tuple
+from typing import Callable, Any
 from enum import Enum
 
 
@@ -101,7 +103,7 @@ class MenuUI:
     def draw_menu(
         self,
         title: str,
-        items: List[MenuItem],
+        items: list[MenuItem],
         selected_idx: int = 0,
         info_text: str = ""
     ) -> None:
@@ -150,7 +152,7 @@ class MenuUI:
 
         self.stdscr.refresh()
 
-    def show_menu(self, title: str, items: List[MenuItem]) -> MenuAction:
+    def show_menu(self, title: str, items: list[MenuItem]) -> MenuAction:
         """
         Display menu and handle navigation
 
@@ -249,7 +251,7 @@ class MenuUI:
         title: str,
         prompt: str,
         default: str = ""
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get text input from user
 
@@ -299,8 +301,8 @@ class MenuUI:
     def show_list(
         self,
         title: str,
-        items: List[str],
-        selected_callback: Optional[Callable[[int], Any]] = None
+        items: list[str],
+        selected_callback: Callable[[int], Any] | None = None
     ) -> MenuAction:
         """
         Display a selectable list
@@ -321,7 +323,7 @@ class MenuUI:
 
         return self.show_menu(title, menu_items)
 
-    def run(self, main_menu_fn: Callable[[], List[MenuItem]]) -> None:
+    def run(self, main_menu_fn: Callable[[], list[MenuItem]]) -> None:
         """
         Run the UI main loop
 
