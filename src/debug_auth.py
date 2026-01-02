@@ -6,6 +6,7 @@ Shows exactly what's being sent and received
 import ssl
 import json
 import urllib.request
+import gzip
 
 # Disable SSL verification (Kindle has outdated CA certificates)
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -40,7 +41,13 @@ try:
     )
 
     with urllib.request.urlopen(req) as response:
-        chip_data = json.loads(response.read().decode('utf-8'))
+        response_data = response.read()
+
+        # Decompress if gzip-encoded
+        if response.headers.get('Content-Encoding') == 'gzip':
+            response_data = gzip.decompress(response_data)
+
+        chip_data = json.loads(response_data.decode('utf-8'))
 
         print(f"\n  Response Status: {response.status}")
         print(f"  Response Keys: {list(chip_data.keys())}")
@@ -86,7 +93,13 @@ try:
     )
 
     with urllib.request.urlopen(req) as response:
-        code_data = json.loads(response.read().decode('utf-8'))
+        response_data = response.read()
+
+        # Decompress if gzip-encoded
+        if response.headers.get('Content-Encoding') == 'gzip':
+            response_data = gzip.decompress(response_data)
+
+        code_data = json.loads(response_data.decode('utf-8'))
 
         print(f"\n  Response Status: {response.status}")
         print(f"  Response Keys: {list(code_data.keys())}")
@@ -102,12 +115,18 @@ try:
 
 except urllib.error.HTTPError as e:
     print(f"\n  ✗ HTTP ERROR {e.code}")
-    error_body = e.read().decode('utf-8')
-    print(f"  Error body: {error_body}")
+    error_body = e.read()
+
+    # Decompress error body if needed
+    if e.headers.get('Content-Encoding') == 'gzip':
+        error_body = gzip.decompress(error_body)
+
+    error_text = error_body.decode('utf-8')
+    print(f"  Error body: {error_text}")
 
     # Try to parse error
     try:
-        error_data = json.loads(error_body)
+        error_data = json.loads(error_text)
         print(f"  Error result: {error_data.get('result', 'unknown')}")
     except:
         pass

@@ -9,6 +9,7 @@ import json
 import urllib.request
 import urllib.parse
 import urllib.error
+import gzip
 from typing import Any
 from pathlib import Path
 import os
@@ -115,12 +116,23 @@ class LibbyClient:
         try:
             with urllib.request.urlopen(req) as response:
                 response_data = response.read()
+
+                # Decompress if gzip-encoded
+                if response.headers.get('Content-Encoding') == 'gzip':
+                    response_data = gzip.decompress(response_data)
+
                 if response_data:
                     return json.loads(response_data.decode('utf-8'))
                 return {}
         except urllib.error.HTTPError as e:
-            error_body = e.read().decode('utf-8') if e.fp else ''
-            raise Exception(f"HTTP {e.code}: {error_body}")
+            error_body = e.read()
+
+            # Decompress error body if needed
+            if e.headers.get('Content-Encoding') == 'gzip':
+                error_body = gzip.decompress(error_body)
+
+            error_text = error_body.decode('utf-8') if error_body else ''
+            raise Exception(f"HTTP {e.code}: {error_text}")
 
     def get_chip(self) -> dict[str, Any]:
         """

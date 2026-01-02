@@ -5,6 +5,7 @@ Test authentication flow step by step
 import ssl
 import json
 import urllib.request
+import gzip
 
 # Disable SSL verification
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -31,7 +32,11 @@ try:
         }
     )
     with urllib.request.urlopen(req) as response:
-        chip_data = json.loads(response.read().decode('utf-8'))
+        response_data = response.read()
+        # Decompress if gzip-encoded
+        if response.headers.get('Content-Encoding') == 'gzip':
+            response_data = gzip.decompress(response_data)
+        chip_data = json.loads(response_data.decode('utf-8'))
         print(f"   SUCCESS: Got chip response")
         print(f"   Keys in response: {list(chip_data.keys())}")
 
@@ -63,7 +68,11 @@ try:
         }
     )
     with urllib.request.urlopen(req) as response:
-        code_data = json.loads(response.read().decode('utf-8'))
+        response_data = response.read()
+        # Decompress if gzip-encoded
+        if response.headers.get('Content-Encoding') == 'gzip':
+            response_data = gzip.decompress(response_data)
+        code_data = json.loads(response_data.decode('utf-8'))
         print(f"   SUCCESS: Got clone code response")
         print(f"   Keys in response: {list(code_data.keys())}")
 
@@ -75,9 +84,13 @@ try:
             print(f"   Full response: {code_data}")
 
 except urllib.error.HTTPError as e:
-    error_body = e.read().decode('utf-8')
+    error_body = e.read()
+    # Decompress error body if needed
+    if e.headers.get('Content-Encoding') == 'gzip':
+        error_body = gzip.decompress(error_body)
+    error_text = error_body.decode('utf-8')
     print(f"   ERROR: HTTP {e.code}")
-    print(f"   Response: {error_body}")
+    print(f"   Response: {error_text}")
     exit(1)
 except Exception as e:
     print(f"   ERROR: {e}")
