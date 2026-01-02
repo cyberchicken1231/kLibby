@@ -143,10 +143,18 @@ class LibbyClient:
         Returns:
             Response containing the clone code and expiration
         """
+        # IMPORTANT: Must have an identity token first
         if not self.identity_token:
             self.get_chip()
 
+        # Generate the code
         response = self._make_request('chip/clone/code')
+
+        # Save the identity token from the response
+        if 'identity' in response:
+            self.identity_token = response['identity']
+            self._save_settings()
+
         return response
 
     def clone_by_code(self, code: str) -> dict[str, Any]:
