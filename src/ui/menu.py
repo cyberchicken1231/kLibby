@@ -57,6 +57,13 @@ class MenuUI:
         self.stdscr.keypad(True)
         curses.curs_set(0)  # Hide cursor
 
+        # Reduce flickering
+        curses.halfdelay(1)  # Wait up to 100ms for input
+
+        # Clear the screen initially
+        self.stdscr.clear()
+        self.stdscr.refresh()
+
         # Try to use colors if available (high contrast for e-ink)
         try:
             curses.start_color()
@@ -116,7 +123,7 @@ class MenuUI:
             selected_idx: Currently selected item index
             info_text: Optional info text to display at bottom
         """
-        self.stdscr.clear()
+        # Don't clear - just overwrite to reduce flicker
         height, width = self.stdscr.getmaxyx()
 
         # Draw header
@@ -127,28 +134,64 @@ class MenuUI:
             if row >= height - 3:  # Leave room for footer
                 break
 
+            # Clear the line first
+            try:
+                self.stdscr.move(row, 0)
+                self.stdscr.clrtoeol()
+            except:
+                pass
+
             # Highlight selected item
             if idx == selected_idx:
                 try:
                     self.stdscr.addstr(row, 2, f"> {item.label}", curses.color_pair(1) | curses.A_BOLD)
                 except:
-                    self.stdscr.addstr(row, 2, f"> {item.label}", curses.A_REVERSE)
+                    try:
+                        self.stdscr.addstr(row, 2, f"> {item.label}", curses.A_REVERSE)
+                    except:
+                        self.stdscr.addstr(row, 2, f"> {item.label}")
             else:
-                self.stdscr.addstr(row, 4, item.label)
+                try:
+                    self.stdscr.addstr(row, 4, item.label)
+                except:
+                    pass
 
+            row += 1
+
+        # Clear any remaining lines
+        while row < height - 3:
+            try:
+                self.stdscr.move(row, 0)
+                self.stdscr.clrtoeol()
+            except:
+                pass
             row += 1
 
         # Draw footer with instructions
         footer_row = height - 2
-        self.stdscr.addstr(footer_row, 0, "-" * width)
+        try:
+            self.stdscr.move(footer_row, 0)
+            self.stdscr.clrtoeol()
+            self.stdscr.addstr(footer_row, 0, "-" * width)
+        except:
+            pass
+
         footer_row += 1
 
-        controls = "↑/↓: Navigate | Enter: Select | Q: Quit"
-        self.stdscr.addstr(footer_row, 2, controls[:width-4])
+        controls = "Up/Down: Navigate | Enter: Select | Q: Quit"
+        try:
+            self.stdscr.move(footer_row, 0)
+            self.stdscr.clrtoeol()
+            self.stdscr.addstr(footer_row, 2, controls[:width-4])
+        except:
+            pass
 
         # Draw info text if provided
         if info_text and row < height - 4:
-            self.stdscr.addstr(row + 1, 2, info_text[:width-4])
+            try:
+                self.stdscr.addstr(row + 1, 2, info_text[:width-4])
+            except:
+                pass
 
         self.stdscr.refresh()
 
@@ -173,24 +216,28 @@ class MenuUI:
             info_text = items[selected_idx].description if items[selected_idx].description else ""
             self.draw_menu(title, items, selected_idx, info_text)
 
-            # Get input
+            # Get input - use nodelay to reduce flickering
+            self.stdscr.nodelay(False)  # Wait for input
             key = self.stdscr.getch()
 
-            # Navigation
-            if key == curses.KEY_UP or key == ord('k'):
+            # Navigation - handle multiple key codes for compatibility
+            if key in (curses.KEY_UP, ord('k'), ord('K'), 259):  # Up arrow, k/K, or alternate up
                 selected_idx = (selected_idx - 1) % len(items)
-            elif key == curses.KEY_DOWN or key == ord('j'):
+            elif key in (curses.KEY_DOWN, ord('j'), ord('J'), 258):  # Down arrow, j/J, or alternate down
                 selected_idx = (selected_idx + 1) % len(items)
-            elif key == ord('\n') or key == curses.KEY_ENTER or key == 10:
+            elif key in (10, 13, curses.KEY_ENTER, ord('\n'), ord('\r')):  # Enter - multiple codes
                 # Execute selected action
                 result = items[selected_idx].action()
                 if result == MenuAction.BACK:
                     return MenuAction.BACK
                 elif result == MenuAction.QUIT:
                     return MenuAction.QUIT
-            elif key == ord('q') or key == ord('Q'):
+                # Otherwise continue showing menu
+            elif key in (ord('q'), ord('Q')):
                 return MenuAction.QUIT
-            elif key == ord('b') or key == ord('B'):
+            elif key in (ord('b'), ord('B')):
+                return MenuAction.BACK
+            elif key == 27:  # ESC key
                 return MenuAction.BACK
 
     def show_message(
