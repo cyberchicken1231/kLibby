@@ -19,8 +19,16 @@ print("=" * 60)
 print("\n1. Getting anonymous identity chip...")
 try:
     req = urllib.request.Request(
-        f"{BASE_URL}/chip",
-        headers={'User-Agent': 'kLibby/0.1.0'}
+        f"{BASE_URL}/chip?client=dewey",
+        method='POST',
+        headers={
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'Referer': 'https://libbyapp.com/',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        }
     )
     with urllib.request.urlopen(req) as response:
         chip_data = json.loads(response.read().decode('utf-8'))
@@ -45,7 +53,12 @@ try:
     req = urllib.request.Request(
         f"{BASE_URL}/chip/clone/code",
         headers={
-            'User-Agent': 'kLibby/0.1.0',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'Referer': 'https://libbyapp.com/',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
             'Authorization': f'Bearer {identity}'
         }
     )

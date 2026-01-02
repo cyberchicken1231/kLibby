@@ -89,10 +89,14 @@ class LibbyClient:
         if params:
             url = f"{url}?{urllib.parse.urlencode(params)}"
 
-        # Prepare request
+        # Prepare headers - must mimic browser/Libby app to avoid 403 errors
         headers = {
-            'User-Agent': 'kLibby/0.1.0',
-            'Accept': 'application/json'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'Referer': 'https://libbyapp.com/',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
         }
 
         if self.identity_token:
@@ -125,7 +129,8 @@ class LibbyClient:
         Returns:
             Chip data containing identity token
         """
-        response = self._make_request('chip')
+        # MUST be POST with client=dewey parameter
+        response = self._make_request('chip', params={'client': 'dewey'}, method='POST')
         if 'identity' in response:
             self.identity_token = response['identity']
             self._save_settings()
