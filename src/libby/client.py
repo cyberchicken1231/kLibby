@@ -164,11 +164,13 @@ class LibbyClient:
         except Exception as e:
             error_msg = str(e)
             # Provide more context in the error message
-            raise Exception(
-                f"Failed to generate clone code: {error_msg}\n"
-                f"Token length: {len(self.identity_token) if self.identity_token else 0}\n"
-                f"Token prefix: {self.identity_token[:20]}..." if self.identity_token and len(self.identity_token) > 20 else ""
-            )
+            token_info = ""
+            if self.identity_token:
+                token_info = (
+                    f"\nToken length: {len(self.identity_token)}"
+                    f"\nToken prefix: {self.identity_token[:20]}..."
+                )
+            raise Exception(f"Failed to generate clone code: {error_msg}{token_info}")
 
         # The response should contain the code
         if 'code' not in response:
