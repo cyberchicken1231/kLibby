@@ -129,6 +129,8 @@ class LibbyClient:
         if 'identity' in response:
             self.identity_token = response['identity']
             self._save_settings()
+        else:
+            raise Exception("Failed to get identity chip from server")
         return response
 
     def generate_clone_code(self) -> dict[str, Any]:
@@ -145,15 +147,28 @@ class LibbyClient:
         """
         # IMPORTANT: Must have an identity token first
         if not self.identity_token:
-            self.get_chip()
+            chip_response = self.get_chip()
+            # Verify we got a token
+            if not self.identity_token:
+                raise Exception("Failed to initialize authentication - no identity token received")
 
-        # Generate the code
-        response = self._make_request('chip/clone/code')
+        # Generate the code - this requires the identity token in Authorization header
+        try:
+            response = self._make_request('chip/clone/code')
+        except Exception as e:
+            # If we get missing_chip error, token might be invalid
+            if "missing_chip" in str(e):
+                # Try getting a fresh chip
+                self.identity_token = None
+                self.get_chip()
+                # Retry
+                response = self._make_request('chip/clone/code')
+            else:
+                raise
 
-        # Save the identity token from the response
-        if 'identity' in response:
-            self.identity_token = response['identity']
-            self._save_settings()
+        # The response should contain the code
+        if 'code' not in response:
+            raise Exception(f"No code in response: {response}")
 
         return response
 
