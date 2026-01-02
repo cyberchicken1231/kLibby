@@ -131,9 +131,30 @@ class LibbyClient:
             self._save_settings()
         return response
 
+    def generate_clone_code(self) -> dict[str, Any]:
+        """
+        Generate an 8-digit setup code for device linking
+
+        This is the NEW Libby authentication flow (2024+):
+        1. kLibby generates a code and displays it
+        2. User enters this code in the Libby app
+        3. kLibby polls to check if authentication completed
+
+        Returns:
+            Response containing the clone code and expiration
+        """
+        if not self.identity_token:
+            self.get_chip()
+
+        response = self._make_request('chip/clone/code')
+        return response
+
     def clone_by_code(self, code: str) -> dict[str, Any]:
         """
         Link to existing Libby account using 8-digit sync code
+
+        DEPRECATED: This is the OLD flow where Libby gave you a code.
+        Use generate_clone_code() for the NEW flow (2024+).
 
         Args:
             code: 8-digit sync code from Libby app
@@ -154,6 +175,15 @@ class LibbyClient:
             self._save_settings()
 
         return response
+
+    def verify_clone_status(self) -> dict[str, Any]:
+        """
+        Check if clone code was used and authentication completed
+
+        Returns:
+            Sync state if authenticated, otherwise raises exception
+        """
+        return self.sync()
 
     def sync(self) -> dict[str, Any]:
         """

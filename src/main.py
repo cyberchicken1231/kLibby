@@ -30,7 +30,7 @@ class KLibbyApp:
         self.current_holds: list[Hold] = []
 
     def setup_auth(self) -> MenuAction:
-        """Setup Libby authentication"""
+        """Setup Libby authentication (NEW 2024+ flow)"""
         if self.client.is_authenticated():
             self.ui.show_message(
                 "Already Authenticated",
@@ -41,41 +41,75 @@ class KLibbyApp:
 
         self.ui.show_message(
             "Libby Authentication",
-            "To connect kLibby to your Libby account:\n\n"
-            "1. Open the Libby app on your phone/tablet\n"
-            "2. Go to Settings (three dots)\n"
-            "3. Select 'Copy To Another Device'\n"
-            "4. You'll see an 8-digit code\n\n"
-            "Enter that code on the next screen."
+            "NEW Authentication Flow (2024+):\n\n"
+            "1. kLibby will generate an 8-digit code\n"
+            "2. You enter this code in your Libby app\n"
+            "3. On phone/tablet: Libby → Settings (⋮)\n"
+            "4. Select 'Copy To Another Device'\n"
+            "5. Enter the code shown next\n\n"
+            "Press Enter to generate code..."
         )
-
-        code = self.ui.get_input(
-            "Enter Sync Code",
-            "Enter your 8-digit Libby sync code:",
-            ""
-        )
-
-        if not code or len(code) != 8:
-            self.ui.show_message("Error", "Invalid sync code. Must be 8 digits.")
-            return MenuAction.BACK
 
         try:
-            # Clean up the code (remove spaces, dashes)
-            code = code.replace(' ', '').replace('-', '')
+            # Generate setup code
+            self.ui.show_message("Generating...", "Generating setup code...", wait_for_key=False)
 
-            self.ui.show_message("Connecting...", "Connecting to Libby...", wait_for_key=False)
+            response = self.client.generate_clone_code()
+            code = response.get('code', '')
 
-            # Authenticate
-            self.client.clone_by_code(code)
+            if not code:
+                self.ui.show_message("Error", "Failed to generate code. Please try again.")
+                return MenuAction.BACK
 
+            # Display the code to user
             self.ui.show_message(
-                "Success!",
-                "Successfully connected to your Libby account!\n\n"
-                "You can now browse and checkout books."
+                "Your Setup Code",
+                f"═══════════════════════════════\n"
+                f"    {code[:4]} - {code[4:]}\n"
+                f"═══════════════════════════════\n\n"
+                f"Enter this code in your Libby app:\n"
+                f"1. Open Libby on phone/tablet\n"
+                f"2. Go to Settings (⋮)\n"
+                f"3. Select 'Copy To Another Device'\n"
+                f"4. Enter: {code}\n\n"
+                f"Press Enter after entering the code..."
             )
 
-            # Load initial data
-            self._refresh_data()
+            # Poll for authentication
+            self.ui.show_message("Waiting...", "Checking authentication...", wait_for_key=False)
+
+            import time
+            max_attempts = 30  # 30 attempts = ~1 minute
+            for attempt in range(max_attempts):
+                try:
+                    # Check if authentication completed
+                    sync_data = self.client.verify_clone_status()
+
+                    if sync_data.get('cards'):
+                        # Successfully authenticated!
+                        self.ui.show_message(
+                            "Success!",
+                            "Successfully connected to your Libby account!\n\n"
+                            "You can now browse and checkout books."
+                        )
+
+                        # Load initial data
+                        self._refresh_data()
+                        return MenuAction.BACK
+
+                except Exception:
+                    # Not authenticated yet, keep waiting
+                    pass
+
+                time.sleep(2)  # Wait 2 seconds between checks
+
+            # Timeout
+            self.ui.show_message(
+                "Timeout",
+                "Authentication timed out.\n\n"
+                "The code may have expired.\n"
+                "Please try again."
+            )
 
         except Exception as e:
             self.ui.show_message("Error", f"Authentication failed:\n{str(e)}")

@@ -180,10 +180,11 @@ SSH makes installation and management much easier:
 
 2. **Set up Libby authentication**:
    - On first run, select "Connect to Libby"
+   - kLibby generates and displays an 8-digit code
    - On your phone/tablet, open the Libby app
    - Go to Settings (⋮) → Copy To Another Device
-   - You'll see an 8-digit code
-   - Enter this code in kLibby
+   - Enter the code shown on your Kindle
+   - kLibby automatically detects when authentication completes
 
 3. **Browse and checkout books**!
 

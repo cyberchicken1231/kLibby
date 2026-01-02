@@ -64,9 +64,10 @@ See [INSTALL.md](INSTALL.md) for detailed installation instructions for jailbrok
 ## Usage
 
 1. Launch kLibby from your Kindle
-2. Enter your Libby sync code (get from Libby app: Settings → Copy to another device)
-3. Browse and checkout books
-4. Read directly or convert to Kindle format
+2. kLibby generates an 8-digit code and displays it
+3. Open Libby app on phone: Settings → Copy to another device → Enter the code
+4. Browse and checkout books
+5. Read directly or convert to Kindle format
 
 ## Development Status
 

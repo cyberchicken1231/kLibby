@@ -47,14 +47,15 @@ klibby
 
 In kLibby menu:
 - Select "Connect to Libby"
-- Follow instructions
+- kLibby generates an 8-digit code
+- Note the code shown on screen
 
 On your phone/tablet (Libby app):
 - Settings (⋮) → Copy To Another Device
-- Note the 8-digit code
+- Enter the code from kLibby
 
-Back in kLibby:
-- Enter the 8-digit code
+Back on Kindle:
+- Wait for authentication (auto-detects)
 - Done! ✨
 
 ### 2. Download a Book
