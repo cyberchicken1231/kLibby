@@ -145,30 +145,34 @@ class LibbyClient:
         Returns:
             Response containing the clone code and expiration
         """
-        # IMPORTANT: Must have an identity token first
+        # IMPORTANT: Always get a fresh identity token for clone code generation
+        # Old/saved tokens may cause "missing_chip" errors
+        self.identity_token = None
+        chip_response = self.get_chip()
+
+        # Verify we got a token
         if not self.identity_token:
-            chip_response = self.get_chip()
-            # Verify we got a token
-            if not self.identity_token:
-                raise Exception("Failed to initialize authentication - no identity token received")
+            raise Exception("Failed to get identity token from server. Response: " + str(chip_response))
+
+        # Validate the token looks correct (should be a long string)
+        if not isinstance(self.identity_token, str) or len(self.identity_token) < 10:
+            raise Exception(f"Invalid identity token received: {self.identity_token}")
 
         # Generate the code - this requires the identity token in Authorization header
         try:
             response = self._make_request('chip/clone/code')
         except Exception as e:
-            # If we get missing_chip error, token might be invalid
-            if "missing_chip" in str(e):
-                # Try getting a fresh chip
-                self.identity_token = None
-                self.get_chip()
-                # Retry
-                response = self._make_request('chip/clone/code')
-            else:
-                raise
+            error_msg = str(e)
+            # Provide more context in the error message
+            raise Exception(
+                f"Failed to generate clone code: {error_msg}\n"
+                f"Token length: {len(self.identity_token) if self.identity_token else 0}\n"
+                f"Token prefix: {self.identity_token[:20]}..." if self.identity_token and len(self.identity_token) > 20 else ""
+            )
 
         # The response should contain the code
         if 'code' not in response:
-            raise Exception(f"No code in response: {response}")
+            raise Exception(f"No code in response. Keys: {list(response.keys())}, Response: {response}")
 
         return response
 
