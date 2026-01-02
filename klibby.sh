@@ -3,23 +3,18 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Set terminal type for curses
-export TERM=linux
+# Set up environment
 export PYTHONPATH="$SCRIPT_DIR/src:$PYTHONPATH"
 
-# Run kLibby with SSL fix
+# Run kLibby with simple text interface (no curses)
 cd "$SCRIPT_DIR/src"
 python3 << 'PYTHON_EOF'
 import ssl
-import os
 
 # Disable SSL verification (Kindle has outdated CA certificates)
 ssl._create_default_https_context = ssl._create_unverified_context
 
-# Ensure TERM is set
-os.environ['TERM'] = 'linux'
-
-# Import and run main with curses
-import main
-main.main()
+# Import and run simple text-based interface
+import main_simple
+main_simple.main()
 PYTHON_EOF
