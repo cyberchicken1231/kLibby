@@ -109,7 +109,21 @@ for attempt in range(1, 91):
         else:
             # Show detailed info about what we're getting
             result = sync_data.get('result', 'N/A')
-            print(f"cards={cards_value}, result={result}, all_keys={list(sync_data.keys())}")
+            loans = sync_data.get('loans', [])
+            holds = sync_data.get('holds', [])
+            summary = sync_data.get('summary', {})
+
+            # On first attempt, show full details
+            if attempt == 1:
+                print(f"\n   Full sync response:")
+                print(f"   - result: {result}")
+                print(f"   - cards: {cards_value}")
+                print(f"   - loans: {loans}")
+                print(f"   - holds: {holds}")
+                print(f"   - summary: {summary}")
+                print(f"   Continuing to poll...")
+            else:
+                print(f"cards={len(cards_value) if cards_value else 0}, loans={len(loans)}, holds={len(holds)}")
     else:
         print(f"ERROR: {error}")
 
