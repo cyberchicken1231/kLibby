@@ -119,11 +119,22 @@ class KLibbySimple:
             input("Press Enter after entering the code...")
 
             # Poll for authentication
-            self.show_message("Waiting...", "Checking authentication...", wait=False)
-
             import time
-            max_attempts = 30  # 30 attempts = ~1 minute
+            max_attempts = 90  # 90 attempts × 2 seconds = 3 minutes
+
             for attempt in range(max_attempts):
+                # Show progress
+                elapsed = attempt * 2
+                self.show_message(
+                    "Waiting for Sync...",
+                    f"Checking authentication...\n\n"
+                    f"Elapsed: {elapsed}s / {max_attempts * 2}s\n"
+                    f"Attempt: {attempt + 1} / {max_attempts}\n\n"
+                    f"The Libby app should show 'Syncing data'.\n"
+                    f"This can take 1-3 minutes depending on your library size.",
+                    wait=False
+                )
+
                 try:
                     # Check if authentication completed
                     sync_data = self.client.verify_clone_status()
@@ -137,9 +148,13 @@ class KLibbySimple:
                         )
                         return
 
-                except Exception:
+                except Exception as e:
                     # Not authenticated yet, keep waiting
-                    pass
+                    # But log unexpected errors for debugging
+                    error_msg = str(e).lower()
+                    if 'cards' not in error_msg and 'sync' not in error_msg:
+                        # Unexpected error, might want to see it
+                        pass
 
                 time.sleep(2)  # Wait 2 seconds between checks
 
