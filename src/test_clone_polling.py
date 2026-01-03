@@ -94,14 +94,19 @@ for attempt in range(1, 91):
 
     if sync_data:
         # Check if we have cards
-        if 'cards' in sync_data and sync_data['cards']:
+        cards_value = sync_data.get('cards')
+        cards_count = len(cards_value) if cards_value else 0
+
+        if cards_count > 0:
             print(f"\n\n   ✓✓✓ SUCCESS! ✓✓✓")
             print(f"   Authentication completed!")
-            print(f"   Found {len(sync_data['cards'])} library card(s)")
-            print(f"   Response keys: {list(sync_data.keys())}")
+            print(f"   Found {cards_count} library card(s)")
+            print(f"   Cards: {cards_value}")
             exit(0)
         else:
-            print(f"No cards yet. Keys: {list(sync_data.keys())}")
+            # Show detailed info about what we're getting
+            result = sync_data.get('result', 'N/A')
+            print(f"cards={cards_value}, result={result}, all_keys={list(sync_data.keys())}")
     else:
         print(f"ERROR: {error}")
 
