@@ -78,12 +78,15 @@ if error:
 
 code = code_data['code']
 print(f"   ✓ Clone code: {code}")
-print(f"\n   Enter this code in your Libby app NOW!")
+print(f"\n   ==========================================")
+print(f"   Enter this code in your Libby app:")
 print(f"   Settings → Copy To Another Device → {code}")
-input("\n   Press Enter after entering the code...")
+print(f"   ==========================================")
+print(f"\n   Polling will start automatically...")
+print(f"   Enter the code whenever you're ready.\n")
 
-# Step 3: Poll for completion
-print("\n3. Polling for authentication completion...")
+# Step 3: Poll for completion - starts immediately, no waiting
+print("3. Polling for authentication completion...")
 print("   (Will show detailed error messages)\n")
 
 for attempt in range(1, 91):

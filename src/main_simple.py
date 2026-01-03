@@ -116,9 +116,14 @@ class KLibbySimple:
             print("  3. Select 'Copy To Another Device'")
             print(f"  4. Enter: {code}")
             print("\n")
-            input("Press Enter after entering the code...")
+            print("  Polling will start in 3 seconds...")
+            print("  Enter the code whenever you're ready.")
+            print("\n")
 
-            # Poll for authentication
+            import time
+            time.sleep(3)  # Brief pause to read the code
+
+            # Poll for authentication - starts automatically
             import time
             max_attempts = 90  # 90 attempts × 2 seconds = 3 minutes
 
