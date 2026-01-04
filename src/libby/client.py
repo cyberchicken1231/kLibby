@@ -199,11 +199,8 @@ class LibbyClient:
         """
         Link to existing Libby account using 8-digit sync code
 
-        DEPRECATED: This is the OLD flow where Libby gave you a code.
-        Use generate_clone_code() for the NEW flow (2024+).
-
         Args:
-            code: 8-digit sync code from Libby app
+            code: 8-digit sync code (either FROM Libby or the one YOU generated)
 
         Returns:
             Chip data with synced identity
@@ -211,11 +208,14 @@ class LibbyClient:
         if not self.identity_token:
             self.get_chip()
 
+        # Code goes in request body, not URL path
         response = self._make_request(
-            f'chip/clone/code/{code}',
-            method='POST'
+            'chip/clone/code',
+            method='POST',
+            data={'code': code}
         )
 
+        # Response should contain new authenticated identity token
         if 'identity' in response:
             self.identity_token = response['identity']
             self._save_settings()

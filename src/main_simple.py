@@ -141,6 +141,18 @@ class KLibbySimple:
                 )
 
                 try:
+                    # CRITICAL: After user enters code in Libby, we need to
+                    # "claim" the authentication by calling clone_by_code with
+                    # the SAME code we generated. This returns authenticated token.
+                    if attempt == 5:  # After 10 seconds, try to claim
+                        try:
+                            claim_response = self.client.clone_by_code(code)
+                            # If it returns a new identity, we're authenticated
+                            if claim_response.get('identity'):
+                                pass  # Token already saved by clone_by_code()
+                        except:
+                            pass  # If it fails, keep polling normally
+
                     # Check if authentication completed
                     sync_data = self.client.verify_clone_status()
 
