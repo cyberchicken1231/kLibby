@@ -20,10 +20,15 @@ class Card:
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> Card:
         """Create Card from API response"""
+        # advantageKey is a string ID, not a nested object
+        # Library info is in a separate 'library' field if present
+        library_info = data.get('library', {})
+        library_name = library_info.get('name', 'Unknown Library') if isinstance(library_info, dict) else 'Unknown Library'
+
         return cls(
             card_id=data.get('cardId', ''),
-            library_name=data.get('advantageKey', {}).get('name', 'Unknown Library'),
-            advantage_key=data.get('advantageKey', {}).get('key'),
+            library_name=library_name,
+            advantage_key=data.get('advantageKey'),
             username=data.get('username')
         )
 
