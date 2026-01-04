@@ -80,9 +80,71 @@ class KLibbySimple:
             )
             return
 
+        # Choose authentication method
+        options = [
+            "I'll get a code FROM Libby (Recommended)",
+            "Generate code for Libby to scan",
+            "← Back"
+        ]
+
+        choice = self.print_menu("Libby Authentication", options)
+
+        if choice is None or choice == 2:
+            return
+        elif choice == 0:
+            self.setup_auth_old_flow()
+        elif choice == 1:
+            self.setup_auth_new_flow()
+
+    def setup_auth_old_flow(self):
+        """OLD flow: Libby gives you the code"""
+        self.show_message(
+            "Get Code from Libby",
+            "1. Open Libby on phone/tablet\n"
+            "2. Go to Settings (⋮) → Copy To Another Device\n"
+            "3. Select 'Sonos' or 'Android Automotive'\n"
+            "4. Libby will show you an 8-digit code\n"
+            "5. Enter that code in the next screen",
+            wait=True
+        )
+
+        code = self.get_input("Enter the 8-digit code from Libby")
+
+        if not code or len(code) != 8 or not code.isdigit():
+            self.show_message("Error", "Invalid code. Must be 8 digits.")
+            return
+
+        try:
+            self.show_message("Connecting...", "Authenticating with Libby...", wait=False)
+
+            # Use the code to authenticate
+            response = self.client.clone_by_code(code)
+
+            # Verify authentication
+            sync_data = self.client.sync()
+
+            if sync_data.get('cards'):
+                self.show_message(
+                    "Success!",
+                    "Successfully connected to your Libby account!\n\n"
+                    "You can now browse and checkout books."
+                )
+            else:
+                self.show_message(
+                    "Error",
+                    "Authentication completed but no library cards found.\n\n"
+                    "Make sure you have at least one library card\n"
+                    "added in your Libby app."
+                )
+
+        except Exception as e:
+            self.show_message("Error", f"Authentication failed:\n{str(e)}")
+
+    def setup_auth_new_flow(self):
+        """NEW flow: kLibby generates code for user to enter in Libby"""
         self.show_message(
             "Libby Authentication",
-            "NEW Authentication Flow (2024+):\n\n"
+            "NEW Authentication Flow:\n\n"
             "1. kLibby will generate an 8-digit code\n"
             "2. You enter this code in your Libby app\n"
             "3. On phone/tablet: Libby → Settings (⋮)\n"
