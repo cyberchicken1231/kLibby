@@ -146,12 +146,14 @@ class KLibbySimple:
                     # the SAME code we generated. This returns authenticated token.
                     if attempt == 5:  # After 10 seconds, try to claim
                         try:
+                            print(f"\nDEBUG: Attempting to claim with code {code}...")
                             claim_response = self.client.clone_by_code(code)
+                            print(f"DEBUG: Claim response: {claim_response}")
                             # If it returns a new identity, we're authenticated
                             if claim_response.get('identity'):
-                                pass  # Token already saved by clone_by_code()
-                        except:
-                            pass  # If it fails, keep polling normally
+                                print(f"DEBUG: Got new identity token!")
+                        except Exception as claim_error:
+                            print(f"DEBUG: Claim failed: {claim_error}")
 
                     # Check if authentication completed
                     sync_data = self.client.verify_clone_status()
