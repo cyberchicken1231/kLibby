@@ -316,6 +316,11 @@ class KLibbySimple:
     def download_loan(self, loan: Loan):
         """Download a book"""
         try:
+            # Debug: show what we're working with
+            print(f"\nDEBUG: Loan card_id: {loan.card_id}")
+            print(f"DEBUG: Loan loan_id: {loan.loan_id}")
+            print(f"DEBUG: Has identity token: {self.client.identity_token is not None}")
+
             self.show_message("Downloading...", "Downloading book...", wait=False)
 
             # Create downloads directory
