@@ -50,33 +50,75 @@ try:
         print("\n   No loans to test. Please checkout a book first.")
         exit(0)
 
-    # Show first loan structure
-    print(f"\n3. Examining first loan structure...")
-    first_loan = loans[0]
-    print(f"   Loan keys: {list(first_loan.keys())}")
-    print(f"   Loan ID: {first_loan.get('id', 'MISSING')}")
-    print(f"   Card ID: {first_loan.get('cardId', 'MISSING')}")
-    print(f"   Title: {first_loan.get('title', 'Unknown')}")
-    print(f"   Is Locked: {first_loan.get('isLocked', False)}")
+    # Show ALL loans with format status
+    print(f"\n3. All loans ({len(loans)} total):")
+    for i, loan in enumerate(loans, 1):
+        title = loan.get('title', 'Unknown')
+        is_format_locked = loan.get('isFormatLockedIn', False)
+
+        # Check what format is locked
+        locked_format = "None"
+        if is_format_locked:
+            for fmt in loan.get('formats', []):
+                if fmt.get('isLockedIn', False):
+                    locked_format = fmt.get('id', 'Unknown')
+                    break
+
+        lock_status = f"LOCKED to {locked_format}" if is_format_locked else "unlocked ✓"
+        print(f"   {i}. {title}")
+        print(f"      Status: {lock_status}")
+        print()
+
+    # Find first non-Kindle-locked book
+    test_loan = None
+    for loan in loans:
+        is_format_locked = loan.get('isFormatLockedIn', False)
+        if not is_format_locked:
+            test_loan = loan
+            print(f"   → Testing first unlocked book: {loan.get('title', 'Unknown')}")
+            break
+
+        # Check if it's Kindle-locked
+        is_kindle = False
+        for fmt in loan.get('formats', []):
+            if fmt.get('id', '').startswith('ebook-kindle') and fmt.get('isLockedIn', False):
+                is_kindle = True
+                break
+
+        if not is_kindle:
+            test_loan = loan
+            print(f"   → Testing first non-Kindle book: {loan.get('title', 'Unknown')}")
+            break
+
+    if not test_loan:
+        print(f"\n   ⚠ All books are Kindle-locked!")
+        print(f"   Testing first book anyway to show the error...")
+        test_loan = loans[0]
+
+    print(f"\n4. Examining selected loan structure...")
+    print(f"   Loan ID: {test_loan.get('id', 'MISSING')}")
+    print(f"   Card ID: {test_loan.get('cardId', 'MISSING')}")
+    print(f"   Title: {test_loan.get('title', 'Unknown')}")
+    print(f"   Format locked: {test_loan.get('isFormatLockedIn', False)}")
 
     # Check if IDs are present
-    loan_id = first_loan.get('id', '')
-    card_id = first_loan.get('cardId', '')
+    loan_id = test_loan.get('id', '')
+    card_id = test_loan.get('cardId', '')
 
     if not loan_id:
         print("\n   ✗ ERROR: Loan is missing 'id' field!")
-        print(f"   Full loan data: {json.dumps(first_loan, indent=2)}")
+        print(f"   Full loan data: {json.dumps(test_loan, indent=2)}")
         exit(1)
 
     if not card_id:
         print("\n   ✗ ERROR: Loan is missing 'cardId' field!")
-        print(f"   Full loan data: {json.dumps(first_loan, indent=2)}")
+        print(f"   Full loan data: {json.dumps(test_loan, indent=2)}")
         exit(1)
 
     print(f"\n   ✓ Loan IDs are present")
 
-    # Step 4: Try to get download link
-    print(f"\n4. Attempting to get download link...")
+    # Step 5: Try to get download link
+    print(f"\n5. Attempting to get download link...")
     print(f"   Card ID: {card_id}")
     print(f"   Loan ID: {loan_id}")
     print(f"   Format: ebook-epub-open")
@@ -115,7 +157,7 @@ try:
 
             # Show full loan data for debugging
             print(f"\n   Full loan data:")
-            print(json.dumps(first_loan, indent=2))
+            print(json.dumps(test_loan, indent=2))
 
 except Exception as e:
     print(f"\n   ✗ ERROR during sync: {e}")
