@@ -338,18 +338,37 @@ class KLibbySimple:
 
             # Sanitize filename
             filename = loan.title.title.replace('/', '-').replace('\\', '-')
-            output_path = downloads_dir / f"{filename}.epub"
 
-            # Try open format first
+            # Determine which format to download
+            format_to_use = 'ebook-epub-open'  # Default: try DRM-free first
+            file_extension = 'epub'
+
+            # If format is locked, use the locked format
+            if loan.is_format_locked_in:
+                for fmt in loan.formats:
+                    if fmt.get('isLockedIn', False):
+                        format_to_use = fmt.get('id', 'ebook-epub-adobe')
+                        # Adobe DRM books download as .acsm files
+                        if format_to_use == 'ebook-epub-adobe':
+                            file_extension = 'acsm'
+                        break
+
+            output_path = downloads_dir / f"{filename}.{file_extension}"
+
+            # Try to download with the determined format
             try:
                 self.client.download_book(
                     loan.card_id,
                     loan.loan_id,
                     str(output_path),
-                    format_type='ebook-epub-open'
+                    format_type=format_to_use
                 )
-            except:
-                # Fallback to Adobe DRM
+            except Exception as e:
+                # If locked format fails, try alternative
+                if loan.is_format_locked_in:
+                    raise  # If it's locked and fails, don't try alternatives
+
+                # Not locked - try Adobe DRM as fallback
                 output_path = downloads_dir / f"{filename}.acsm"
                 self.client.download_book(
                     loan.card_id,
@@ -358,11 +377,21 @@ class KLibbySimple:
                     format_type='ebook-epub-adobe'
                 )
 
-            self.show_message(
-                "Download Complete",
-                f"Book downloaded to:\n{output_path}\n\n"
-                f"You can now read it with an ePub reader."
-            )
+            # Show appropriate message based on file type
+            if file_extension == 'acsm':
+                self.show_message(
+                    "Download Complete",
+                    f"Book downloaded to:\n{output_path}\n\n"
+                    f"This is an Adobe DRM file (.acsm).\n"
+                    f"You'll need Adobe Digital Editions to read it.\n\n"
+                    f"Note: ACSM files may not work on all Kindle devices."
+                )
+            else:
+                self.show_message(
+                    "Download Complete",
+                    f"Book downloaded to:\n{output_path}\n\n"
+                    f"You can now read it with an ePub reader."
+                )
 
         except Exception as e:
             error_msg = str(e)
