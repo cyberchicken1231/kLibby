@@ -315,6 +315,20 @@ class KLibbySimple:
 
     def download_loan(self, loan: Loan):
         """Download a book"""
+        # Check if book is locked to Kindle format
+        if loan.is_kindle_locked():
+            self.show_message(
+                "Cannot Download",
+                f"This book was already sent to your Kindle device.\n\n"
+                f"Books delivered to Kindle cannot be downloaded in\n"
+                f"other formats due to Libby's DRM restrictions.\n\n"
+                f"You can read it on your Kindle, or you can:\n"
+                f"- Wait for the loan to expire and checkout again\n"
+                f"  in a different format\n"
+                f"- Read online using OverDrive Read in a browser"
+            )
+            return
+
         try:
             self.show_message("Downloading...", "Downloading book...", wait=False)
 
@@ -351,15 +365,29 @@ class KLibbySimple:
             )
 
         except Exception as e:
-            # Debug output in error message
-            debug_info = (
-                f"DEBUG INFO:\n"
-                f"  Loan card_id: {loan.card_id}\n"
-                f"  Loan loan_id: {loan.loan_id}\n"
-                f"  Has identity token: {self.client.identity_token is not None}\n\n"
-                f"ERROR: {str(e)}"
-            )
-            self.show_message("Error", f"Download failed:\n\n{debug_info}")
+            error_msg = str(e)
+
+            # Check for other "format locked" errors
+            if "missing_chip" in error_msg and loan.is_format_locked_in:
+                self.show_message(
+                    "Cannot Download",
+                    f"This book's format is locked and cannot be downloaded.\n\n"
+                    f"It may have been fulfilled on another device or\n"
+                    f"in a different format. Try reading it there, or\n"
+                    f"wait for the loan to expire and checkout again."
+                )
+            else:
+                # Generic error with debug info
+                debug_info = (
+                    f"DEBUG INFO:\n"
+                    f"  Loan card_id: {loan.card_id}\n"
+                    f"  Loan loan_id: {loan.loan_id}\n"
+                    f"  Format locked: {loan.is_format_locked_in}\n"
+                    f"  Kindle locked: {loan.is_kindle_locked()}\n"
+                    f"  Has identity token: {self.client.identity_token is not None}\n\n"
+                    f"ERROR: {error_msg}"
+                )
+                self.show_message("Error", f"Download failed:\n\n{debug_info}")
 
     def return_loan(self, loan: Loan):
         """Return a loan"""

@@ -68,6 +68,9 @@ class Loan:
     title: Title | None
     expire_date: datetime | None = None
     is_locked: bool = False
+    is_format_locked_in: bool = False
+    is_returnable: bool = True
+    formats: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> Loan:
@@ -84,8 +87,23 @@ class Loan:
             card_id=data.get('cardId', ''),
             title=Title.from_api(data) if 'title' in data else None,
             expire_date=expire_date,
-            is_locked=data.get('isLocked', False)
+            is_locked=data.get('isLocked', False),
+            is_format_locked_in=data.get('isFormatLockedIn', False),
+            is_returnable=data.get('isReturnable', True),
+            formats=data.get('formats', [])
         )
+
+    def is_kindle_locked(self) -> bool:
+        """Check if loan is locked to Kindle format"""
+        if not self.is_format_locked_in:
+            return False
+
+        # Check if any Kindle format is locked
+        for fmt in self.formats:
+            if fmt.get('id', '').startswith('ebook-kindle') and fmt.get('isLockedIn', False):
+                return True
+
+        return False
 
 
 @dataclass
