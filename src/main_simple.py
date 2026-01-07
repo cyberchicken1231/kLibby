@@ -370,7 +370,18 @@ class KLibbySimple:
                 self.client.return_loan(loan.card_id, loan.loan_id)
                 self.show_message("Success", f"'{title}' has been returned.")
             except Exception as e:
-                self.show_message("Error", f"Return failed:\n{str(e)}")
+                error_msg = str(e)
+                # Check for Kindle-specific error
+                if "CannotEarlyReturnWhenFulfilledOnKindle" in error_msg:
+                    self.show_message(
+                        "Cannot Return",
+                        f"This book was already sent to your Kindle device.\n\n"
+                        f"Libby doesn't allow early returns for books that\n"
+                        f"have been fulfilled on Kindle. The book will\n"
+                        f"automatically return when the loan expires."
+                    )
+                else:
+                    self.show_message("Error", f"Return failed:\n{error_msg}")
 
     def view_holds(self):
         """View holds"""
