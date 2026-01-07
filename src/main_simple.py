@@ -316,11 +316,6 @@ class KLibbySimple:
     def download_loan(self, loan: Loan):
         """Download a book"""
         try:
-            # Debug: show what we're working with
-            print(f"\nDEBUG: Loan card_id: {loan.card_id}")
-            print(f"DEBUG: Loan loan_id: {loan.loan_id}")
-            print(f"DEBUG: Has identity token: {self.client.identity_token is not None}")
-
             self.show_message("Downloading...", "Downloading book...", wait=False)
 
             # Create downloads directory
@@ -356,7 +351,15 @@ class KLibbySimple:
             )
 
         except Exception as e:
-            self.show_message("Error", f"Download failed:\n{str(e)}")
+            # Debug output in error message
+            debug_info = (
+                f"DEBUG INFO:\n"
+                f"  Loan card_id: {loan.card_id}\n"
+                f"  Loan loan_id: {loan.loan_id}\n"
+                f"  Has identity token: {self.client.identity_token is not None}\n\n"
+                f"ERROR: {str(e)}"
+            )
+            self.show_message("Error", f"Download failed:\n\n{debug_info}")
 
     def return_loan(self, loan: Loan):
         """Return a loan"""
