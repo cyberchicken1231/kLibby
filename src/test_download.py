@@ -117,22 +117,37 @@ try:
 
     print(f"\n   ✓ Loan IDs are present")
 
-    # Step 5: Try to get download link
-    print(f"\n5. Attempting to get download link...")
+    # Step 5: Try to download book
+    print(f"\n5. Attempting to download book...")
     print(f"   Card ID: {card_id}")
     print(f"   Loan ID: {loan_id}")
     print(f"   Format: ebook-epub-open")
 
     try:
-        download_url, content_type = client.get_download_link(
+        # Create test output path
+        import tempfile
+        import os
+        test_file = os.path.join(tempfile.gettempdir(), f"klibby_test_{loan_id}.epub")
+
+        client.download_book(
             card_id,
             loan_id,
+            test_file,
             'ebook-epub-open'
         )
 
-        print(f"\n   ✓✓✓ SUCCESS! ✓✓✓")
-        print(f"   Download URL: {download_url[:50]}..." if download_url else "   Download URL: EMPTY")
-        print(f"   Content type: {content_type}")
+        # Check file was created
+        if os.path.exists(test_file):
+            file_size = os.path.getsize(test_file)
+            print(f"\n   ✓✓✓ SUCCESS! ✓✓✓")
+            print(f"   Downloaded to: {test_file}")
+            print(f"   File size: {file_size:,} bytes")
+
+            # Clean up test file
+            os.remove(test_file)
+            print(f"   Test file cleaned up")
+        else:
+            print(f"\n   ✗ File was not created")
 
     except Exception as e:
         error_msg = str(e)
@@ -140,17 +155,30 @@ try:
         print(f"   Error: {error_msg}")
 
         # Try alternative format
-        print(f"\n5. Trying alternative format (ebook-epub-adobe)...")
+        print(f"\n5b. Trying alternative format (ebook-epub-adobe)...")
         try:
-            download_url, content_type = client.get_download_link(
+            import tempfile
+            import os
+            test_file = os.path.join(tempfile.gettempdir(), f"klibby_test_{loan_id}.acsm")
+
+            client.download_book(
                 card_id,
                 loan_id,
+                test_file,
                 'ebook-epub-adobe'
             )
 
-            print(f"\n   ✓ Alternative format worked!")
-            print(f"   Download URL: {download_url[:50]}..." if download_url else "   Download URL: EMPTY")
-            print(f"   Content type: {content_type}")
+            if os.path.exists(test_file):
+                file_size = os.path.getsize(test_file)
+                print(f"\n   ✓ Alternative format worked!")
+                print(f"   Downloaded to: {test_file}")
+                print(f"   File size: {file_size:,} bytes")
+
+                # Clean up test file
+                os.remove(test_file)
+                print(f"   Test file cleaned up")
+            else:
+                print(f"\n   ✗ File was not created")
 
         except Exception as e2:
             print(f"\n   ✗ Alternative format also failed: {str(e2)}")

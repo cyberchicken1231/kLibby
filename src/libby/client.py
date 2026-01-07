@@ -66,7 +66,9 @@ class LibbyClient:
         method: str = 'GET',
         params: dict[str, Any] | None = None,
         data: dict[str, Any] | None = None,
-        base_url: str | None = None
+        base_url: str | None = None,
+        return_response: bool = False,
+        follow_redirects: bool = True
     ) -> Any:
         """
         Make HTTP request to Libby API
@@ -77,9 +79,11 @@ class LibbyClient:
             params: URL query parameters
             data: Request body data
             base_url: Override base URL
+            return_response: If True, return response object instead of parsed JSON
+            follow_redirects: If False, don't automatically follow redirects
 
         Returns:
-            Parsed JSON response
+            Parsed JSON response or response object if return_response=True
 
         Raises:
             urllib.error.HTTPError: On HTTP errors
@@ -113,8 +117,40 @@ class LibbyClient:
         # Make request
         req = urllib.request.Request(url, data=request_body, headers=headers, method=method)
 
+        # Custom redirect handler if needed
+        if not follow_redirects:
+            class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    return None
+
+            opener = urllib.request.build_opener(NoRedirectHandler)
+            try:
+                response = opener.open(req)
+                if return_response:
+                    return response
+                response_data = response.read()
+                if response.headers.get('Content-Encoding') == 'gzip':
+                    response_data = gzip.decompress(response_data)
+                if response_data:
+                    return json.loads(response_data.decode('utf-8'))
+                return {}
+            except urllib.error.HTTPError as e:
+                # For redirects, HTTPError is raised with 3xx codes
+                if e.code in (301, 302, 303, 307, 308) and return_response:
+                    return e
+                # Regular error handling
+                error_body = e.read()
+                if e.headers.get('Content-Encoding') == 'gzip':
+                    error_body = gzip.decompress(error_body)
+                error_text = error_body.decode('utf-8') if error_body else ''
+                raise Exception(f"HTTP {e.code}: {error_text}")
+
+        # Normal request with redirects
         try:
             with urllib.request.urlopen(req) as response:
+                if return_response:
+                    return response
+
                 response_data = response.read()
 
                 # Decompress if gzip-encoded
@@ -372,17 +408,56 @@ class LibbyClient:
         Returns:
             Path to downloaded file
         """
-        download_url, content_type = self.get_download_link(card_id, loan_id, format_type)
+        # Prepare headers for fulfill request
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+            'Accept': '*/*',
+            'Referer': 'https://libbyapp.com/',
+        }
 
-        if not download_url:
-            raise Exception("Could not get download URL")
+        if self.identity_token:
+            headers['Authorization'] = f'Bearer {self.identity_token}'
 
-        # Download file
-        req = urllib.request.Request(download_url, headers={
-            'User-Agent': 'kLibby/0.1.0'
-        })
+        endpoint = f'card/{card_id}/loan/{loan_id}/fulfill/{format_type}'
 
-        with urllib.request.urlopen(req) as response:
+        # For open formats (ebook-epub-open, ebook-pdf-open), the fulfill endpoint
+        # returns a redirect to the actual file on a CDN
+        if format_type in ('ebook-epub-open', 'ebook-pdf-open'):
+            # Get the redirect without following it
+            response = self._make_request(
+                endpoint,
+                return_response=True,
+                follow_redirects=False
+            )
+
+            # Extract redirect location
+            redirect_url = None
+            if hasattr(response, 'headers'):
+                redirect_url = response.headers.get('Location')
+            elif hasattr(response, 'getheader'):
+                redirect_url = response.getheader('Location')
+
+            if not redirect_url:
+                raise Exception("Could not get download redirect URL from fulfill endpoint")
+
+            # Download from the redirect URL
+            download_req = urllib.request.Request(redirect_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+            })
+
+            with urllib.request.urlopen(download_req) as download_response:
+                with open(output_path, 'wb') as f:
+                    f.write(download_response.read())
+
+        else:
+            # For DRM formats (ebook-epub-adobe, audiobook-mp3, etc.),
+            # the fulfill endpoint returns the file content directly
+            response = self._make_request(
+                endpoint,
+                return_response=True,
+                follow_redirects=True
+            )
+
             with open(output_path, 'wb') as f:
                 f.write(response.read())
 
