@@ -82,18 +82,21 @@ class KLibbySimple:
 
         # Choose authentication method
         options = [
-            "I'll get a code FROM Libby (Recommended)",
+            "Use Browser Token (For Downloads - Recommended)",
+            "I'll get a code FROM Libby",
             "Generate code for Libby to scan",
             "← Back"
         ]
 
         choice = self.print_menu("Libby Authentication", options)
 
-        if choice is None or choice == 2:
+        if choice is None or choice == 3:
             return
         elif choice == 0:
-            self.setup_auth_old_flow()
+            self.setup_auth_browser_token()
         elif choice == 1:
+            self.setup_auth_old_flow()
+        elif choice == 2:
             self.setup_auth_new_flow()
 
     def setup_auth_old_flow(self):
@@ -249,6 +252,59 @@ class KLibbySimple:
 
         except Exception as e:
             self.show_message("Error", f"Authentication failed:\n{str(e)}")
+
+    def setup_auth_browser_token(self):
+        """Browser token flow: Extract token from libbyapp.com"""
+        self.show_message(
+            "Browser Token Authentication",
+            "This method gives FULL download permissions!\n\n"
+            "HOW TO GET YOUR TOKEN:\n"
+            "1. Go to https://libbyapp.com in a web browser\n"
+            "2. Sign in with your library card\n"
+            "3. Press F12 to open DevTools\n"
+            "4. Click the 'Network' tab\n"
+            "5. Click on any book in Libby\n"
+            "6. In Network tab, click any request\n"
+            "7. Find 'Authorization' in Request Headers\n"
+            "8. Copy the FULL token value\n"
+            "   (long string starting with 'eyJ...')\n\n"
+            "NOTE: You can paste the full header including\n"
+            "'Bearer ' prefix, or just the token itself.",
+            wait=True
+        )
+
+        token = self.get_input(
+            "Paste your browser token here:\n"
+            "(it will be very long - that's normal)"
+        )
+
+        if not token:
+            self.show_message("Cancelled", "No token entered.")
+            return
+
+        try:
+            self.show_message("Verifying...", "Verifying token with Libby...", wait=False)
+
+            # Set and verify the token
+            self.client.set_browser_token(token)
+
+            self.show_message(
+                "Success!",
+                "Browser token authenticated successfully!\n\n"
+                "You now have FULL permissions including:\n"
+                "- View loans, holds, and cards\n"
+                "- Download books in any format\n\n"
+                "Your token has been saved and will be\n"
+                "used automatically from now on."
+            )
+
+        except Exception as e:
+            self.show_message(
+                "Error",
+                f"Token verification failed:\n\n{str(e)}\n\n"
+                "Make sure you copied the FULL token value\n"
+                "from the Authorization header."
+            )
 
     def view_loans(self):
         """View active loans"""

@@ -253,6 +253,10 @@ class LibbyClient:
         """
         Link to existing Libby account using 8-digit sync code
 
+        NOTE: As of late 2024, clone codes give READ-ONLY permissions.
+        They work for viewing loans/holds/cards but NOT for downloading books.
+        Use set_browser_token() instead for download permissions.
+
         Args:
             code: 8-digit sync code (either FROM Libby or the one YOU generated)
 
@@ -275,6 +279,55 @@ class LibbyClient:
             self._save_settings()
 
         return response
+
+    def set_browser_token(self, token: str) -> bool:
+        """
+        Set identity token manually from browser session
+
+        This is the recommended authentication method for downloads.
+        As of late 2024, clone codes only give read-only access.
+
+        To get a browser token:
+        1. Go to https://libbyapp.com in a web browser
+        2. Sign in with your library card
+        3. Open DevTools (F12)
+        4. Go to Network tab
+        5. Click on any book in Libby
+        6. Find a request in the Network tab
+        7. Look for the 'Authorization' header
+        8. Copy the full value (including 'Bearer ' prefix or not)
+
+        Args:
+            token: Full session token from browser (with or without 'Bearer ' prefix)
+
+        Returns:
+            True if token was set successfully
+        """
+        # Remove 'Bearer ' prefix if present
+        if token.startswith('Bearer '):
+            token = token[7:]
+
+        # Basic validation
+        token = token.strip()
+        if not token or len(token) < 50:
+            raise ValueError("Token appears invalid (too short). Make sure you copied the full token.")
+
+        # Set and save the token
+        self.identity_token = token
+        self._save_settings()
+
+        # Verify it works by trying to sync
+        try:
+            sync_result = self.sync()
+            if sync_result.get('result') == 'synchronized':
+                return True
+            else:
+                raise Exception(f"Token set but sync failed: {sync_result}")
+        except Exception as e:
+            # Token didn't work, clear it
+            self.identity_token = None
+            self._save_settings()
+            raise Exception(f"Browser token verification failed: {e}")
 
     def verify_clone_status(self) -> dict[str, Any]:
         """
