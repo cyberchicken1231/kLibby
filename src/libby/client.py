@@ -68,7 +68,8 @@ class LibbyClient:
         data: dict[str, Any] | None = None,
         base_url: str | None = None,
         return_response: bool = False,
-        follow_redirects: bool = True
+        follow_redirects: bool = True,
+        custom_headers: dict[str, str] | None = None
     ) -> Any:
         """
         Make HTTP request to Libby API
@@ -81,6 +82,7 @@ class LibbyClient:
             base_url: Override base URL
             return_response: If True, return response object instead of parsed JSON
             follow_redirects: If False, don't automatically follow redirects
+            custom_headers: Custom headers to merge with defaults
 
         Returns:
             Parsed JSON response or response object if return_response=True
@@ -94,7 +96,7 @@ class LibbyClient:
         if params:
             url = f"{url}?{urllib.parse.urlencode(params)}"
 
-        # Prepare headers - must mimic browser/Libby app to avoid 403 errors
+        # Prepare default headers - must mimic browser/Libby app to avoid 403 errors
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
             'Accept': 'application/json',
@@ -103,6 +105,10 @@ class LibbyClient:
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
         }
+
+        # Merge custom headers (custom headers take precedence)
+        if custom_headers:
+            headers.update(custom_headers)
 
         if self.identity_token:
             headers['Authorization'] = f'Bearer {self.identity_token}'
@@ -408,15 +414,10 @@ class LibbyClient:
         Returns:
             Path to downloaded file
         """
-        # Prepare headers for fulfill request
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+        # Prepare custom headers for fulfill request (Accept: */* is important)
+        custom_headers = {
             'Accept': '*/*',
-            'Referer': 'https://libbyapp.com/',
         }
-
-        if self.identity_token:
-            headers['Authorization'] = f'Bearer {self.identity_token}'
 
         endpoint = f'card/{card_id}/loan/{loan_id}/fulfill/{format_type}'
 
@@ -427,7 +428,8 @@ class LibbyClient:
             response = self._make_request(
                 endpoint,
                 return_response=True,
-                follow_redirects=False
+                follow_redirects=False,
+                custom_headers=custom_headers
             )
 
             # Extract redirect location
@@ -455,7 +457,8 @@ class LibbyClient:
             response = self._make_request(
                 endpoint,
                 return_response=True,
-                follow_redirects=True
+                follow_redirects=True,
+                custom_headers=custom_headers
             )
 
             with open(output_path, 'wb') as f:
