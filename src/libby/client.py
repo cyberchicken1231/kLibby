@@ -412,7 +412,8 @@ class LibbyClient:
         card_id: str,
         loan_id: str,
         output_path: str,
-        format_type: str = 'ebook-epub-open'
+        format_type: str = 'ebook-epub-open',
+        title_id: str | None = None
     ) -> str:
         """
         Download a book to file
@@ -422,13 +423,46 @@ class LibbyClient:
             loan_id: Loan ID
             output_path: Path to save file
             format_type: Format type (prefer open format if available)
+            title_id: Title/reserve ID (optional, will be looked up if not provided)
 
         Returns:
             Path to downloaded file
         """
+        # Step 1: Open the loan (required before fulfill)
+        # This API call prepares the loan for download
+        if not title_id:
+            # Look up title_id from the loan
+            loans = self.get_loans()
+            matching_loan = next((l for l in loans if l.loan_id == loan_id), None)
+            if not matching_loan or not matching_loan.title:
+                raise Exception("Could not find title ID for loan")
+            title_id = matching_loan.title.title_id
+
+        print(f"\n[DEBUG] Opening loan before fulfill...")
+        print(f"  Loan ID: {loan_id}")
+        print(f"  Title ID: {title_id}")
+
+        # Determine loan type from format
+        if 'audiobook' in format_type:
+            loan_type = 'audiobook'
+        elif 'magazine' in format_type:
+            loan_type = 'magazine'
+        else:
+            loan_type = 'book'
+
+        # Call open_loan endpoint to prepare for download
+        open_endpoint = f'open/{loan_type}/card/{card_id}/title/{title_id}'
+        try:
+            open_response = self._make_request(open_endpoint)
+            print(f"  ✓ Loan opened successfully")
+            print(f"  Open response keys: {list(open_response.keys())}")
+        except Exception as e:
+            print(f"  ✗ Failed to open loan: {e}")
+            raise Exception(f"Failed to open loan before fulfill: {e}")
+
+        # Step 2: Now proceed with fulfill request
         # Prepare headers for fulfill request
         # Match odmpy's approach: minimal headers without Referer
-        # (Referer might trigger CSRF protection on fulfill endpoint)
         fulfill_headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
             'Accept': '*/*',
