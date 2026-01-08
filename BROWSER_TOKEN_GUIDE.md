@@ -15,8 +15,10 @@ The **browser token method** gives you **full permissions** including downloads.
    - Sign in with your library card
 
 2. **Open Developer Tools**
-   - Press `F12` on your keyboard
-   - Or right-click anywhere → "Inspect"
+   - **Easiest:** Right-click anywhere → "Inspect"
+   - **Or:** Press `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Option+I` (Mac)
+   - **Or:** Press `F12` (if available)
+   - **Or:** Browser menu → More tools → Developer tools
 
 3. **Go to Network Tab**
    - Click the "Network" tab in DevTools
