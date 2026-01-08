@@ -148,7 +148,13 @@ class LibbyClient:
                 error_body = e.read()
                 if e.headers.get('Content-Encoding') == 'gzip':
                     error_body = gzip.decompress(error_body)
-                error_text = error_body.decode('utf-8') if error_body else ''
+                error_text = error_body.decode('utf-8') if error_body else '(empty response)'
+
+                # Add debug info for 403 errors
+                if e.code == 403:
+                    error_text += f"\n\nResponse headers: {dict(e.headers)}"
+                    error_text += f"\nRequest URL: {url}"
+
                 raise Exception(f"HTTP {e.code}: {error_text}")
 
         # Normal request with redirects
@@ -173,7 +179,13 @@ class LibbyClient:
             if e.headers.get('Content-Encoding') == 'gzip':
                 error_body = gzip.decompress(error_body)
 
-            error_text = error_body.decode('utf-8') if error_body else ''
+            error_text = error_body.decode('utf-8') if error_body else '(empty response)'
+
+            # Add debug info for 403 errors
+            if e.code == 403:
+                error_text += f"\n\nResponse headers: {dict(e.headers)}"
+                error_text += f"\nRequest URL: {url}"
+
             raise Exception(f"HTTP {e.code}: {error_text}")
 
     def get_chip(self) -> dict[str, Any]:
@@ -420,6 +432,15 @@ class LibbyClient:
         }
 
         endpoint = f'card/{card_id}/loan/{loan_id}/fulfill/{format_type}'
+
+        # Debug: print request details
+        full_url = f"{self.BASE_URL}/{endpoint}"
+        print(f"\n[DEBUG] Fulfill request:")
+        print(f"  URL: {full_url}")
+        print(f"  Format: {format_type}")
+        print(f"  Has auth token: {self.identity_token is not None}")
+        if self.identity_token:
+            print(f"  Token preview: {self.identity_token[:50]}...")
 
         # For open formats (ebook-epub-open, ebook-pdf-open), the fulfill endpoint
         # returns a redirect to the actual file on a CDN
