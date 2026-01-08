@@ -38,6 +38,8 @@ env/
 # kLibby specific
 .klibby/
 downloads/
+set_token*.py
+Plain Text.txt
 
 # OS
 .DS_Store

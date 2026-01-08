@@ -10,6 +10,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import gzip
+import ssl
 from typing import Any
 from pathlib import Path
 import os
@@ -123,13 +124,16 @@ class LibbyClient:
         # Make request
         req = urllib.request.Request(url, data=request_body, headers=headers, method=method)
 
+        # Create SSL context that uses system certificates
+        ssl_context = ssl.create_default_context()
+
         # Custom redirect handler if needed
         if not follow_redirects:
             class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
                 def redirect_request(self, req, fp, code, msg, headers, newurl):
                     return None
 
-            opener = urllib.request.build_opener(NoRedirectHandler)
+            opener = urllib.request.build_opener(NoRedirectHandler, urllib.request.HTTPSHandler(context=ssl_context))
             try:
                 response = opener.open(req)
                 if return_response:
@@ -159,7 +163,7 @@ class LibbyClient:
 
         # Normal request with redirects
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, context=ssl_context) as response:
                 if return_response:
                     return response
 
@@ -280,7 +284,7 @@ class LibbyClient:
 
         return response
 
-    def set_browser_token(self, token: str) -> bool:
+    def set_browser_token(self, token: str, verify: bool = True) -> bool:
         """
         Set identity token manually from browser session
 
@@ -299,6 +303,7 @@ class LibbyClient:
 
         Args:
             token: Full session token from browser (with or without 'Bearer ' prefix)
+            verify: If True, verify token by calling sync endpoint (default True)
 
         Returns:
             True if token was set successfully
@@ -316,18 +321,21 @@ class LibbyClient:
         self.identity_token = token
         self._save_settings()
 
-        # Verify it works by trying to sync
-        try:
-            sync_result = self.sync()
-            if sync_result.get('result') == 'synchronized':
-                return True
-            else:
-                raise Exception(f"Token set but sync failed: {sync_result}")
-        except Exception as e:
-            # Token didn't work, clear it
-            self.identity_token = None
-            self._save_settings()
-            raise Exception(f"Browser token verification failed: {e}")
+        # Verify it works by trying to sync (if requested)
+        if verify:
+            try:
+                sync_result = self.sync()
+                if sync_result.get('result') == 'synchronized':
+                    return True
+                else:
+                    raise Exception(f"Token set but sync failed: {sync_result}")
+            except Exception as e:
+                # Token didn't work, clear it
+                self.identity_token = None
+                self._save_settings()
+                raise Exception(f"Browser token verification failed: {e}")
+
+        return True
 
     def verify_clone_status(self) -> dict[str, Any]:
         """
