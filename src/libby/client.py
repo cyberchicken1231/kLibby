@@ -426,10 +426,19 @@ class LibbyClient:
         Returns:
             Path to downloaded file
         """
-        # Prepare custom headers for fulfill request (Accept: */* is important)
-        custom_headers = {
+        # Prepare headers for fulfill request
+        # Match odmpy's approach: minimal headers without Referer
+        # (Referer might trigger CSRF protection on fulfill endpoint)
+        fulfill_headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
             'Accept': '*/*',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
         }
+
+        # Add auth token
+        if self.identity_token:
+            fulfill_headers['Authorization'] = f'Bearer {self.identity_token}'
 
         endpoint = f'card/{card_id}/loan/{loan_id}/fulfill/{format_type}'
 
@@ -439,26 +448,35 @@ class LibbyClient:
         print(f"  URL: {full_url}")
         print(f"  Format: {format_type}")
         print(f"  Has auth token: {self.identity_token is not None}")
+        print(f"  Headers: {list(fulfill_headers.keys())}")
         if self.identity_token:
             print(f"  Token preview: {self.identity_token[:50]}...")
+
+        # Make fulfill request directly (bypass _make_request to avoid default headers)
+        fulfill_url = f"{self.BASE_URL}/{endpoint}"
+        fulfill_req = urllib.request.Request(fulfill_url, headers=fulfill_headers, method='GET')
 
         # For open formats (ebook-epub-open, ebook-pdf-open), the fulfill endpoint
         # returns a redirect to the actual file on a CDN
         if format_type in ('ebook-epub-open', 'ebook-pdf-open'):
             # Get the redirect without following it
-            response = self._make_request(
-                endpoint,
-                return_response=True,
-                follow_redirects=False,
-                custom_headers=custom_headers
-            )
+            class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    return None
 
-            # Extract redirect location
-            redirect_url = None
-            if hasattr(response, 'headers'):
+            opener = urllib.request.build_opener(NoRedirectHandler)
+
+            try:
+                response = opener.open(fulfill_req)
                 redirect_url = response.headers.get('Location')
-            elif hasattr(response, 'getheader'):
-                redirect_url = response.getheader('Location')
+            except urllib.error.HTTPError as e:
+                if e.code in (301, 302, 303, 307, 308):
+                    # Redirect as expected
+                    redirect_url = e.headers.get('Location')
+                else:
+                    # Real error
+                    error_body = e.read().decode('utf-8') if e.read() else '(empty)'
+                    raise Exception(f"Fulfill request failed: HTTP {e.code}: {error_body}")
 
             if not redirect_url:
                 raise Exception("Could not get download redirect URL from fulfill endpoint")
@@ -475,15 +493,13 @@ class LibbyClient:
         else:
             # For DRM formats (ebook-epub-adobe, audiobook-mp3, etc.),
             # the fulfill endpoint returns the file content directly
-            response = self._make_request(
-                endpoint,
-                return_response=True,
-                follow_redirects=True,
-                custom_headers=custom_headers
-            )
-
-            with open(output_path, 'wb') as f:
-                f.write(response.read())
+            try:
+                with urllib.request.urlopen(fulfill_req) as response:
+                    with open(output_path, 'wb') as f:
+                        f.write(response.read())
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode('utf-8') if e.read() else '(empty)'
+                raise Exception(f"Fulfill request failed: HTTP {e.code}: {error_body}\n\nHeaders sent: {list(fulfill_headers.keys())}")
 
         return output_path
 
