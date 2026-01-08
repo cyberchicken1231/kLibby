@@ -330,7 +330,24 @@ class KLibbySimple:
             return
 
         try:
-            self.show_message("Downloading...", "Downloading book...", wait=False)
+            self.show_message("Downloading...", "Detecting best format...", wait=False)
+
+            # Auto-detect best format to download
+            try:
+                format_to_use = loan.get_best_format(prefer_open=True)
+            except ValueError as e:
+                # Loan is locked to non-downloadable format (e.g., Kindle)
+                self.show_message("Cannot Download", str(e))
+                return
+
+            if not format_to_use:
+                self.show_message(
+                    "Cannot Download",
+                    "This book has no downloadable formats available.\n\n"
+                    "It may only be available for reading online\n"
+                    "or on specific devices."
+                )
+                return
 
             # Create downloads directory
             downloads_dir = Path.home() / "kLibby" / "downloads"
@@ -339,84 +356,83 @@ class KLibbySimple:
             # Sanitize filename
             filename = loan.title.title.replace('/', '-').replace('\\', '-')
 
-            # Determine which format to download
-            format_to_use = 'ebook-epub-open'  # Default: try DRM-free first
-            file_extension = 'epub'
+            # Determine file extension based on format
+            if 'pdf' in format_to_use:
+                file_extension = 'pdf'
+            elif 'epub' in format_to_use:
+                file_extension = 'epub'
+            elif 'mp3' in format_to_use:
+                file_extension = 'odm'
+            else:
+                file_extension = 'epub'  # Default
 
-            # If format is locked, use the locked format
-            if loan.is_format_locked_in:
-                for fmt in loan.formats:
-                    if fmt.get('isLockedIn', False):
-                        format_to_use = fmt.get('id', 'ebook-epub-adobe')
-                        # Adobe DRM books download as .acsm files
-                        if format_to_use == 'ebook-epub-adobe':
-                            file_extension = 'acsm'
-                        break
+            # Adobe DRM formats download as .acsm files
+            if 'adobe' in format_to_use:
+                file_extension = 'acsm'
 
             output_path = downloads_dir / f"{filename}.{file_extension}"
 
-            # Try to download with the determined format
-            try:
-                self.client.download_book(
-                    loan.card_id,
-                    loan.loan_id,
-                    str(output_path),
-                    format_type=format_to_use
-                )
-            except Exception as e:
-                # If locked format fails, try alternative
-                if loan.is_format_locked_in:
-                    raise  # If it's locked and fails, don't try alternatives
-
-                # Not locked - try Adobe DRM as fallback
-                output_path = downloads_dir / f"{filename}.acsm"
-                self.client.download_book(
-                    loan.card_id,
-                    loan.loan_id,
-                    str(output_path),
-                    format_type='ebook-epub-adobe'
-                )
+            # Download the book
+            self.show_message("Downloading...", f"Downloading as {format_to_use}...", wait=False)
+            self.client.download_book(
+                loan.card_id,
+                loan.loan_id,
+                str(output_path),
+                format_type=format_to_use
+            )
 
             # Show appropriate message based on file type
+            format_name = format_to_use.upper().replace('-', ' ')
             if file_extension == 'acsm':
                 self.show_message(
                     "Download Complete",
                     f"Book downloaded to:\n{output_path}\n\n"
+                    f"Format: {format_name}\n\n"
                     f"This is an Adobe DRM file (.acsm).\n"
-                    f"You'll need Adobe Digital Editions to read it.\n\n"
+                    f"You'll need Adobe Digital Editions to open it,\n"
+                    f"which will download the actual EPUB/PDF file.\n\n"
                     f"Note: ACSM files may not work on all Kindle devices."
+                )
+            elif file_extension == 'odm':
+                self.show_message(
+                    "Download Complete",
+                    f"Book downloaded to:\n{output_path}\n\n"
+                    f"Format: {format_name}\n\n"
+                    f"This is an audiobook manifest file (.odm).\n"
+                    f"Use OverDrive Media Console or odmpy to\n"
+                    f"download the actual audio files."
+                )
+            elif 'open' in format_to_use:
+                self.show_message(
+                    "Download Complete",
+                    f"Book downloaded to:\n{output_path}\n\n"
+                    f"Format: {format_name} (DRM-free!)\n\n"
+                    f"You can read this on any EPUB reader,\n"
+                    f"including your Kindle device."
                 )
             else:
                 self.show_message(
                     "Download Complete",
                     f"Book downloaded to:\n{output_path}\n\n"
-                    f"You can now read it with an ePub reader."
+                    f"Format: {format_name}\n\n"
+                    f"You can now read it with an appropriate reader."
                 )
 
         except Exception as e:
             error_msg = str(e)
 
-            # Check for other "format locked" errors
-            if "missing_chip" in error_msg and loan.is_format_locked_in:
-                self.show_message(
-                    "Cannot Download",
-                    f"This book's format is locked and cannot be downloaded.\n\n"
-                    f"It may have been fulfilled on another device or\n"
-                    f"in a different format. Try reading it there, or\n"
-                    f"wait for the loan to expire and checkout again."
-                )
-            else:
-                # Generic error with debug info
-                debug_info = (
-                    f"DEBUG INFO:\n"
-                    f"  Loan card_id: {loan.card_id}\n"
-                    f"  Loan loan_id: {loan.loan_id}\n"
-                    f"  Format locked: {loan.is_format_locked_in}\n"
-                    f"  Kindle locked: {loan.is_kindle_locked()}\n"
-                    f"  Has identity token: {self.client.identity_token is not None}\n\n"
-                    f"ERROR: {error_msg}"
-                )
-                self.show_message("Error", f"Download failed:\n\n{debug_info}")
+            # Show error with helpful debug info
+            debug_info = (
+                f"Download failed!\n\n"
+                f"ERROR: {error_msg}\n\n"
+                f"DEBUG INFO:\n"
+                f"  Loan ID: {loan.loan_id}\n"
+                f"  Card ID: {loan.card_id}\n"
+                f"  Format locked: {loan.is_format_locked_in}\n"
+                f"  Kindle locked: {loan.is_kindle_locked()}\n"
+                f"  Has auth token: {self.client.identity_token is not None}"
+            )
+            self.show_message("Download Error", debug_info)
 
     def return_loan(self, loan: Loan):
         """Return a loan"""

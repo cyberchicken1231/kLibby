@@ -117,29 +117,34 @@ try:
 
     print(f"\n   ✓ Loan IDs are present")
 
-    # Step 5: Determine which formats are available
-    print(f"\n5. Detecting available download formats...")
-    available_formats = []
-    for fmt in test_loan.get('formats', []):
-        fmt_id = fmt.get('id', '')
-        if fmt_id in ('ebook-epub-open', 'ebook-pdf-open', 'ebook-epub-adobe', 'ebook-pdf-adobe'):
-            available_formats.append(fmt_id)
-            print(f"   - {fmt_id}")
+    # Step 5: Auto-detect best format using Loan model
+    print(f"\n5. Auto-detecting best downloadable format...")
 
-    if not available_formats:
+    # Convert raw loan data to Loan object to use get_best_format()
+    from libby.models import Loan
+    loan_obj = Loan.from_api(test_loan)
+
+    try:
+        format_to_try = loan_obj.get_best_format(prefer_open=True)
+    except ValueError as e:
+        print(f"\n   ✗ Cannot download: {e}")
+        exit(1)
+
+    if not format_to_try:
         print(f"\n   ✗ No downloadable formats available!")
         print(f"   Available formats: {[f.get('id') for f in test_loan.get('formats', [])]}")
         exit(1)
 
-    # Try formats in preferred order (DRM-free first, then DRM)
-    preferred_order = ['ebook-epub-open', 'ebook-pdf-open', 'ebook-epub-adobe', 'ebook-pdf-adobe']
-    format_to_try = None
-    for preferred_fmt in preferred_order:
-        if preferred_fmt in available_formats:
-            format_to_try = preferred_fmt
-            break
+    print(f"   ✓ Auto-selected format: {format_to_try}")
 
-    print(f"\n   Trying format: {format_to_try}")
+    # Show all available formats for reference
+    print(f"\n   All formats for this book:")
+    for fmt in test_loan.get('formats', []):
+        fmt_id = fmt.get('id', '')
+        is_locked = fmt.get('isLockedIn', False)
+        lock_status = " [LOCKED-IN]" if is_locked else ""
+        selected = " ← AUTO-SELECTED" if fmt_id == format_to_try else ""
+        print(f"   - {fmt_id}{lock_status}{selected}")
 
     # Step 6: Try to download book
     print(f"\n6. Attempting to download book...")
@@ -151,9 +156,21 @@ try:
         # Create test output path
         import tempfile
         import os
-        extension = 'epub' if 'epub' in format_to_try else 'pdf'
+
+        # Determine file extension
+        if 'pdf' in format_to_try:
+            extension = 'pdf'
+        elif 'epub' in format_to_try:
+            extension = 'epub'
+        elif 'mp3' in format_to_try:
+            extension = 'odm'
+        else:
+            extension = 'epub'
+
+        # Adobe DRM formats download as .acsm files
         if 'adobe' in format_to_try:
             extension = 'acsm'
+
         test_file = os.path.join(tempfile.gettempdir(), f"klibby_test_{loan_id}.{extension}")
 
         client.download_book(
@@ -169,10 +186,18 @@ try:
             print(f"\n   ✓✓✓ SUCCESS! ✓✓✓")
             print(f"   Downloaded to: {test_file}")
             print(f"   File size: {file_size:,} bytes")
+            print(f"   Format: {format_to_try}")
+
+            # Show file type
+            if extension == 'acsm':
+                print(f"\n   Note: This is an Adobe DRM file (.acsm)")
+                print(f"   Open it with Adobe Digital Editions to get the actual EPUB/PDF")
+            elif 'open' in format_to_try:
+                print(f"\n   ✓ This is a DRM-free file! You can read it anywhere.")
 
             # Clean up test file
             os.remove(test_file)
-            print(f"   Test file cleaned up")
+            print(f"\n   Test file cleaned up")
         else:
             print(f"\n   ✗ File was not created")
 
@@ -180,49 +205,8 @@ try:
         error_msg = str(e)
         print(f"\n   ✗✗✗ FAILED! ✗✗✗")
         print(f"   Error: {error_msg}")
-
-        # Try all other formats
-        for alt_format in available_formats:
-            if alt_format == format_to_try:
-                continue
-
-            print(f"\n6b. Trying alternative format ({alt_format})...")
-            try:
-                import tempfile
-                import os
-                extension = 'epub' if 'epub' in alt_format else 'pdf'
-                if 'adobe' in alt_format:
-                    extension = 'acsm'
-                test_file = os.path.join(tempfile.gettempdir(), f"klibby_test_{loan_id}.{extension}")
-
-                client.download_book(
-                    card_id,
-                    loan_id,
-                    test_file,
-                    alt_format
-                )
-
-                if os.path.exists(test_file):
-                    file_size = os.path.getsize(test_file)
-                    print(f"\n   ✓ Alternative format worked!")
-                    print(f"   Downloaded to: {test_file}")
-                    print(f"   File size: {file_size:,} bytes")
-
-                    # Clean up test file
-                    os.remove(test_file)
-                    print(f"   Test file cleaned up")
-                    break  # Success, don't try more formats
-                else:
-                    print(f"\n   ✗ File was not created")
-
-            except Exception as e2:
-                print(f"\n   ✗ Format {alt_format} also failed: {str(e2)}")
-
-        else:
-            # All formats failed - show debug info
-            print(f"\n   ✗ ALL formats failed!")
-            print(f"\n   Full loan data:")
-            print(json.dumps(test_loan, indent=2))
+        print(f"\n   Full loan data:")
+        print(json.dumps(test_loan, indent=2))
 
 except Exception as e:
     print(f"\n   ✗ ERROR during sync: {e}")

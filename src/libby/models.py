@@ -105,6 +105,77 @@ class Loan:
 
         return False
 
+    def get_best_format(self, prefer_open: bool = True) -> str | None:
+        """
+        Auto-detect the best downloadable format for this loan
+
+        Args:
+            prefer_open: If True, prefer DRM-free formats over DRM formats
+
+        Returns:
+            Format ID string (e.g., 'ebook-epub-open') or None if no downloadable format
+
+        Raises:
+            ValueError: If loan is locked to a non-downloadable format
+        """
+        # List of downloadable formats
+        DOWNLOADABLE_FORMATS = [
+            'ebook-epub-open',
+            'ebook-pdf-open',
+            'ebook-epub-adobe',
+            'ebook-pdf-adobe',
+            'audiobook-mp3',
+            'magazine-overdrive'
+        ]
+
+        # If format is locked, check if it's downloadable
+        if self.is_format_locked_in:
+            for fmt in self.formats:
+                if fmt.get('isLockedIn', False):
+                    locked_format = fmt.get('id', '')
+                    if locked_format in DOWNLOADABLE_FORMATS:
+                        return locked_format
+                    else:
+                        raise ValueError(
+                            f'Loan is locked to non-downloadable format "{locked_format}". '
+                            f'This format cannot be downloaded (e.g., Kindle, Kobo, OverDrive Read).'
+                        )
+
+        # Not locked - choose best available format based on preference
+        if prefer_open:
+            # Prefer DRM-free formats first
+            preferred_order = [
+                'ebook-epub-open',
+                'ebook-pdf-open',
+                'ebook-epub-adobe',
+                'ebook-pdf-adobe',
+                'audiobook-mp3',
+                'magazine-overdrive'
+            ]
+        else:
+            # Prefer DRM formats (useful for testing or certain readers)
+            preferred_order = [
+                'ebook-epub-adobe',
+                'ebook-pdf-adobe',
+                'ebook-epub-open',
+                'ebook-pdf-open',
+                'audiobook-mp3',
+                'magazine-overdrive'
+            ]
+
+        # Find first available format in preferred order
+        available_format_ids = {fmt.get('id', '') for fmt in self.formats}
+
+        for preferred_fmt in preferred_order:
+            if preferred_fmt in available_format_ids:
+                return preferred_fmt
+
+        return None
+
+    def has_format(self, format_id: str) -> bool:
+        """Check if this loan has a specific format available"""
+        return any(fmt.get('id') == format_id for fmt in self.formats)
+
 
 @dataclass
 class Hold:
