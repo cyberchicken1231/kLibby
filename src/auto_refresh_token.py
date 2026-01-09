@@ -148,7 +148,17 @@ class TokenRefresher:
             for by_method, selector in library_result_selectors:
                 try:
                     library_result = wait.until(EC.element_to_be_clickable((by_method, selector)))
-                    library_result.click()
+
+                    # Scroll into view
+                    driver.execute_script("arguments[0].scrollIntoView(true);", library_result)
+                    time.sleep(0.5)
+
+                    # Try regular click, fallback to JavaScript
+                    try:
+                        library_result.click()
+                    except WebDriverException:
+                        driver.execute_script("arguments[0].click();", library_result)
+
                     print(f"  → Clicked on library result using {selector}")
                     library_result_clicked = True
                     break
@@ -184,7 +194,17 @@ class TokenRefresher:
             for by_method, selector in sign_in_selectors:
                 try:
                     sign_in_btn = wait.until(EC.element_to_be_clickable((by_method, selector)))
-                    sign_in_btn.click()
+
+                    # Scroll into view
+                    driver.execute_script("arguments[0].scrollIntoView(true);", sign_in_btn)
+                    time.sleep(0.5)
+
+                    # Try regular click, fallback to JavaScript
+                    try:
+                        sign_in_btn.click()
+                    except WebDriverException:
+                        driver.execute_script("arguments[0].click();", sign_in_btn)
+
                     sign_in_clicked = True
                     print(f"  → Clicked sign-in button using {selector}")
                     break
@@ -229,8 +249,15 @@ class TokenRefresher:
                     f"Try running with --no-headless to see what's happening."
                 )
 
+            # Scroll into view and wait for it to be interactable
+            driver.execute_script("arguments[0].scrollIntoView(true);", card_input)
+            time.sleep(0.5)
+
+            # Wait until clickable
+            card_input = wait.until(EC.element_to_be_clickable(card_input))
             card_input.clear()
             card_input.send_keys(card_number)
+            print(f"  → Entered card number")
             time.sleep(1)
 
             # Find and fill PIN input
@@ -262,8 +289,15 @@ class TokenRefresher:
                     f"Screenshot saved to {screenshot_path}"
                 )
 
+            # Scroll into view and wait for it to be interactable
+            driver.execute_script("arguments[0].scrollIntoView(true);", pin_input)
+            time.sleep(0.5)
+
+            # Wait until clickable
+            pin_input = wait.until(EC.element_to_be_clickable(pin_input))
             pin_input.clear()
             pin_input.send_keys(pin)
+            print(f"  → Entered PIN")
             time.sleep(1)
 
             # Click submit button
@@ -282,7 +316,19 @@ class TokenRefresher:
             for by_method, selector in submit_selectors:
                 try:
                     submit_btn = wait.until(EC.element_to_be_clickable((by_method, selector)))
-                    submit_btn.click()
+
+                    # Scroll into view
+                    driver.execute_script("arguments[0].scrollIntoView(true);", submit_btn)
+                    time.sleep(0.5)
+
+                    # Try regular click first
+                    try:
+                        submit_btn.click()
+                    except WebDriverException:
+                        # If regular click fails, try JavaScript click
+                        print(f"  → Regular click failed, trying JavaScript click...")
+                        driver.execute_script("arguments[0].click();", submit_btn)
+
                     print(f"  → Clicked submit button using {selector}")
                     submit_clicked = True
                     break
