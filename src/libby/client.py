@@ -524,7 +524,54 @@ class LibbyClient:
             print(f"  ✗ Failed to open loan: {e}")
             raise Exception(f"Failed to open loan before fulfill: {e}")
 
-        # Step 2: Now proceed with fulfill request
+        # Step 2: CRITICAL - Set up session cookie via HEAD request
+        # This is what odmpy does and kLibby was missing!
+        print(f"\n[DEBUG] Setting up session cookie...")
+        download_base = open_response.get('urls', {}).get('web', '')
+        message = open_response.get('message', '')
+
+        if download_base and message:
+            cookie_url = f"{download_base}?{message}"
+            print(f"  Cookie URL: {cookie_url[:80]}...")
+
+            # Create cookie jar to store session cookies
+            import http.cookiejar
+            cookie_jar = http.cookiejar.CookieJar()
+
+            # Make HEAD request WITHOUT auth token to set cookie
+            cookie_req = urllib.request.Request(
+                cookie_url,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.2 Safari/605.1.15',
+                    'Accept': '*/*',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                method='HEAD'
+            )
+
+            # Disable SSL verification for cookie request too
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            opener = urllib.request.build_opener(
+                urllib.request.HTTPCookieProcessor(cookie_jar),
+                urllib.request.HTTPSHandler(context=ssl_context)
+            )
+
+            try:
+                opener.open(cookie_req)
+                print(f"  ✓ Session cookie set (cookies: {len(cookie_jar)})")
+            except Exception as e:
+                print(f"  ⚠ Cookie setup warning: {e}")
+                # Continue anyway - cookie might not be required for all formats
+        else:
+            print(f"  ⚠ No cookie URL found in open response")
+            cookie_jar = None
+            opener = None
+
+        # Step 3: Now proceed with fulfill request
         # Prepare headers for fulfill request
         # Match odmpy's approach: minimal headers without Referer
         fulfill_headers = {
@@ -562,7 +609,23 @@ class LibbyClient:
                 def redirect_request(self, req, fp, code, msg, headers, newurl):
                     return None
 
-            opener = urllib.request.build_opener(NoRedirectHandler)
+            # Use opener with cookies if available, otherwise create new one
+            if opener and cookie_jar:
+                # Add NoRedirect handler to existing opener
+                opener = urllib.request.build_opener(
+                    NoRedirectHandler,
+                    urllib.request.HTTPCookieProcessor(cookie_jar),
+                    urllib.request.HTTPSHandler(context=ssl_context)
+                )
+            else:
+                # Create SSL context for new opener
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                opener = urllib.request.build_opener(
+                    NoRedirectHandler,
+                    urllib.request.HTTPSHandler(context=ssl_context)
+                )
 
             try:
                 response = opener.open(fulfill_req)
@@ -592,9 +655,19 @@ class LibbyClient:
             # For DRM formats (ebook-epub-adobe, audiobook-mp3, etc.),
             # the fulfill endpoint returns the file content directly
             try:
-                with urllib.request.urlopen(fulfill_req) as response:
-                    with open(output_path, 'wb') as f:
-                        f.write(response.read())
+                # Use opener with cookies if available
+                if opener and cookie_jar:
+                    response = opener.open(fulfill_req)
+                else:
+                    # Create SSL context
+                    ssl_context = ssl.create_default_context()
+                    ssl_context.check_hostname = False
+                    ssl_context.verify_mode = ssl.CERT_NONE
+                    response = urllib.request.urlopen(fulfill_req, context=ssl_context)
+
+                with open(output_path, 'wb') as f:
+                    f.write(response.read())
+                response.close()
             except urllib.error.HTTPError as e:
                 error_body = e.read().decode('utf-8') if e.read() else '(empty)'
                 raise Exception(f"Fulfill request failed: HTTP {e.code}: {error_body}\n\nHeaders sent: {list(fulfill_headers.keys())}")
