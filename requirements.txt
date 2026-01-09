@@ -9,6 +9,9 @@
 # - PEP 585: Built-in generic types (list, dict instead of List, Dict)
 # - dataclasses with field() for default factories
 
+# Optional dependencies for auto token refresh:
+selenium>=4.0.0  # For automated browser token extraction
+
 # Optional development dependencies:
 # pytest>=7.0.0  # For testing
 # black>=22.0.0  # For code formatting

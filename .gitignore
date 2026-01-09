@@ -40,6 +40,7 @@ env/
 downloads/
 set_token*.py
 Plain Text.txt
+credentials.json
 
 # OS
 .DS_Store
