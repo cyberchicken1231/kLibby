@@ -94,105 +94,137 @@ class TokenRefresher:
             driver.get("https://libbyapp.com")
 
             # Wait for page to load
-            time.sleep(2)
+            print("  → Waiting for page to load...")
+            wait = WebDriverWait(driver, 20)
+            time.sleep(3)
 
             # Click "Sign in with a library card" button
             print("  → Looking for sign-in button...")
-            wait = WebDriverWait(driver, 10)
 
             # Try multiple selectors for the sign-in button
             sign_in_clicked = False
-            selectors = [
-                "//button[contains(text(), 'Sign In')]",
-                "//button[contains(text(), 'sign in')]",
-                "//a[contains(text(), 'Sign In')]",
-                "//a[contains(@href, 'sign')]",
-                "//button[contains(@class, 'sign')]"
+            sign_in_selectors = [
+                (By.XPATH, "//button[contains(., 'Sign In')]"),
+                (By.XPATH, "//a[contains(., 'Sign In')]"),
+                (By.XPATH, "//*[contains(text(), 'library card')]"),
+                (By.CSS_SELECTOR, "button[data-test='sign-in']"),
+                (By.CSS_SELECTOR, "a[href*='card']"),
+                (By.LINK_TEXT, "Sign In"),
+                (By.PARTIAL_LINK_TEXT, "library"),
             ]
 
-            for selector in selectors:
+            for by_method, selector in sign_in_selectors:
                 try:
-                    sign_in_btn = wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
+                    sign_in_btn = wait.until(EC.element_to_be_clickable((by_method, selector)))
                     sign_in_btn.click()
                     sign_in_clicked = True
-                    print("  → Clicked sign-in button")
+                    print(f"  → Clicked sign-in button using {selector}")
                     break
                 except (TimeoutException, WebDriverException):
                     continue
 
             if not sign_in_clicked:
-                # Try finding card input directly (might already be on login page)
-                print("  → Looking for card input field directly...")
+                print("  → Couldn't find sign-in button, looking for login form directly...")
 
-            time.sleep(2)
+            time.sleep(3)
 
             # Find and fill library card input
-            print("  → Entering library card number...")
+            print("  → Looking for library card input field...")
             card_input_selectors = [
-                "//input[@type='text']",
-                "//input[@name='card']",
-                "//input[contains(@placeholder, 'card')]",
-                "//input[contains(@placeholder, 'Card')]",
-                "//input[contains(@class, 'card')]"
+                (By.CSS_SELECTOR, "input[type='text']"),
+                (By.CSS_SELECTOR, "input[type='tel']"),
+                (By.CSS_SELECTOR, "input[name='card']"),
+                (By.CSS_SELECTOR, "input[placeholder*='card' i]"),
+                (By.CSS_SELECTOR, "input[id*='card' i]"),
+                (By.XPATH, "//input[@type='text']"),
+                (By.XPATH, "//input[@type='tel']"),
+                (By.XPATH, "//input[contains(@placeholder, 'card')]"),
+                (By.XPATH, "//input[contains(@placeholder, 'Card')]"),
             ]
 
             card_input = None
-            for selector in card_input_selectors:
+            for by_method, selector in card_input_selectors:
                 try:
-                    card_input = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                    card_input = wait.until(EC.presence_of_element_located((by_method, selector)))
+                    print(f"  → Found card input using {selector}")
                     break
                 except TimeoutException:
                     continue
 
             if not card_input:
-                raise Exception("Could not find library card input field")
+                # Save screenshot for debugging
+                screenshot_path = "/tmp/libby_debug.png"
+                driver.save_screenshot(screenshot_path)
+                raise Exception(
+                    f"Could not find library card input field.\n"
+                    f"Screenshot saved to {screenshot_path}\n"
+                    f"Try running with --no-headless to see what's happening."
+                )
 
             card_input.clear()
             card_input.send_keys(card_number)
             time.sleep(1)
 
             # Find and fill PIN input
-            print("  → Entering PIN...")
+            print("  → Looking for PIN input field...")
             pin_input_selectors = [
-                "//input[@type='password']",
-                "//input[@name='pin']",
-                "//input[contains(@placeholder, 'PIN')]",
-                "//input[contains(@placeholder, 'pin')]",
-                "//input[contains(@class, 'pin')]"
+                (By.CSS_SELECTOR, "input[type='password']"),
+                (By.CSS_SELECTOR, "input[name='pin']"),
+                (By.CSS_SELECTOR, "input[placeholder*='PIN' i]"),
+                (By.CSS_SELECTOR, "input[id*='pin' i]"),
+                (By.XPATH, "//input[@type='password']"),
+                (By.XPATH, "//input[contains(@placeholder, 'PIN')]"),
+                (By.XPATH, "//input[contains(@placeholder, 'pin')]"),
             ]
 
             pin_input = None
-            for selector in pin_input_selectors:
+            for by_method, selector in pin_input_selectors:
                 try:
-                    pin_input = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                    pin_input = wait.until(EC.presence_of_element_located((by_method, selector)))
+                    print(f"  → Found PIN input using {selector}")
                     break
                 except TimeoutException:
                     continue
 
             if not pin_input:
-                raise Exception("Could not find PIN input field")
+                screenshot_path = "/tmp/libby_debug_pin.png"
+                driver.save_screenshot(screenshot_path)
+                raise Exception(
+                    f"Could not find PIN input field.\n"
+                    f"Screenshot saved to {screenshot_path}"
+                )
 
             pin_input.clear()
             pin_input.send_keys(pin)
             time.sleep(1)
 
             # Click submit button
-            print("  → Submitting login form...")
+            print("  → Looking for submit button...")
             submit_selectors = [
-                "//button[@type='submit']",
-                "//button[contains(text(), 'Sign In')]",
-                "//button[contains(text(), 'Log In')]",
-                "//button[contains(@class, 'submit')]"
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.CSS_SELECTOR, "input[type='submit']"),
+                (By.CSS_SELECTOR, "button[data-test*='submit' i]"),
+                (By.XPATH, "//button[@type='submit']"),
+                (By.XPATH, "//button[contains(., 'Sign In')]"),
+                (By.XPATH, "//button[contains(., 'Log In')]"),
+                (By.XPATH, "//input[@type='submit']"),
             ]
 
-            for selector in submit_selectors:
+            submit_clicked = False
+            for by_method, selector in submit_selectors:
                 try:
-                    submit_btn = wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
+                    submit_btn = wait.until(EC.element_to_be_clickable((by_method, selector)))
                     submit_btn.click()
-                    print("  → Clicked submit button")
+                    print(f"  → Clicked submit button using {selector}")
+                    submit_clicked = True
                     break
                 except (TimeoutException, WebDriverException):
                     continue
+
+            if not submit_clicked:
+                print("  → Warning: Couldn't find submit button, trying Enter key...")
+                from selenium.webdriver.common.keys import Keys
+                pin_input.send_keys(Keys.RETURN)
 
             # Wait for login to complete
             print("  → Waiting for login to complete...")
