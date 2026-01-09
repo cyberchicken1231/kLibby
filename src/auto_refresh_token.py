@@ -131,7 +131,8 @@ class TokenRefresher:
             card_input_selectors = [
                 "//input[@type='text']",
                 "//input[@name='card']",
-                "//input[@placeholder*='card']",
+                "//input[contains(@placeholder, 'card')]",
+                "//input[contains(@placeholder, 'Card')]",
                 "//input[contains(@class, 'card')]"
             ]
 
@@ -155,7 +156,8 @@ class TokenRefresher:
             pin_input_selectors = [
                 "//input[@type='password']",
                 "//input[@name='pin']",
-                "//input[@placeholder*='PIN']",
+                "//input[contains(@placeholder, 'PIN')]",
+                "//input[contains(@placeholder, 'pin')]",
                 "//input[contains(@class, 'pin')]"
             ]
 
