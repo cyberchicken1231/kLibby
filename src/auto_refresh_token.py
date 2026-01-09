@@ -29,9 +29,10 @@ class TokenRefresher:
         self.credentials_file = self.settings_path / "credentials.json"
         self.client = LibbyClient()
 
-    def save_credentials(self, card_number: str, pin: str) -> None:
+    def save_credentials(self, library_name: str, card_number: str, pin: str) -> None:
         """Save library credentials (PLAIN TEXT - be careful!)"""
         data = {
+            "library_name": library_name,
             "card_number": card_number,
             "pin": pin
         }
@@ -40,7 +41,7 @@ class TokenRefresher:
         print(f"✓ Credentials saved to {self.credentials_file}")
         print("⚠ WARNING: Credentials are stored in PLAIN TEXT!")
 
-    def load_credentials(self) -> tuple[str, str]:
+    def load_credentials(self) -> tuple[str, str, str]:
         """Load saved credentials"""
         if not self.credentials_file.exists():
             raise FileNotFoundError(
@@ -51,13 +52,14 @@ class TokenRefresher:
         with open(self.credentials_file, 'r') as f:
             data = json.load(f)
 
-        return data['card_number'], data['pin']
+        return data['library_name'], data['card_number'], data['pin']
 
-    def extract_token_from_browser(self, card_number: str, pin: str, headless: bool = True) -> str:
+    def extract_token_from_browser(self, library_name: str, card_number: str, pin: str, headless: bool = True) -> str:
         """
         Use Selenium to login to libbyapp.com and extract Authorization token
 
         Args:
+            library_name: Library name to search for
             card_number: Library card number
             pin: Library card PIN
             headless: Run browser in headless mode (default True)
@@ -96,6 +98,72 @@ class TokenRefresher:
             # Wait for page to load
             print("  → Waiting for page to load...")
             wait = WebDriverWait(driver, 20)
+            time.sleep(3)
+
+            # Search for library
+            print(f"  → Searching for library: {library_name}...")
+            library_search_selectors = [
+                (By.CSS_SELECTOR, "input[type='search']"),
+                (By.CSS_SELECTOR, "input[placeholder*='library' i]"),
+                (By.CSS_SELECTOR, "input[placeholder*='search' i]"),
+                (By.XPATH, "//input[@type='search']"),
+                (By.XPATH, "//input[contains(@placeholder, 'library')]"),
+                (By.XPATH, "//input[contains(@placeholder, 'Library')]"),
+            ]
+
+            library_search_input = None
+            for by_method, selector in library_search_selectors:
+                try:
+                    library_search_input = wait.until(EC.presence_of_element_located((by_method, selector)))
+                    print(f"  → Found library search input using {selector}")
+                    break
+                except TimeoutException:
+                    continue
+
+            if not library_search_input:
+                screenshot_path = "/tmp/libby_debug_search.png"
+                driver.save_screenshot(screenshot_path)
+                raise Exception(
+                    f"Could not find library search input.\n"
+                    f"Screenshot saved to {screenshot_path}\n"
+                    f"Try running with --no-headless to see what's happening."
+                )
+
+            library_search_input.clear()
+            library_search_input.send_keys(library_name)
+            time.sleep(2)
+
+            # Click on first library result
+            print("  → Waiting for library search results...")
+            library_result_selectors = [
+                (By.CSS_SELECTOR, "button[data-test*='library']"),
+                (By.CSS_SELECTOR, "a[href*='library']"),
+                (By.CSS_SELECTOR, ".library-result"),
+                (By.XPATH, "//button[contains(@data-test, 'library')]"),
+                (By.XPATH, "//li[contains(@class, 'library')]"),
+                (By.XPATH, f"//*[contains(text(), '{library_name}')]"),
+            ]
+
+            library_result_clicked = False
+            for by_method, selector in library_result_selectors:
+                try:
+                    library_result = wait.until(EC.element_to_be_clickable((by_method, selector)))
+                    library_result.click()
+                    print(f"  → Clicked on library result using {selector}")
+                    library_result_clicked = True
+                    break
+                except (TimeoutException, WebDriverException):
+                    continue
+
+            if not library_result_clicked:
+                screenshot_path = "/tmp/libby_debug_results.png"
+                driver.save_screenshot(screenshot_path)
+                raise Exception(
+                    f"Could not find library in search results.\n"
+                    f"Screenshot saved to {screenshot_path}\n"
+                    f"Make sure the library name is correct."
+                )
+
             time.sleep(3)
 
             # Click "Sign in with a library card" button
@@ -289,15 +357,16 @@ class TokenRefresher:
 
         # Load credentials
         try:
-            card_number, pin = self.load_credentials()
-            print(f"✓ Loaded credentials for card: {card_number[:4]}****{card_number[-4:]}\n")
+            library_name, card_number, pin = self.load_credentials()
+            print(f"✓ Loaded credentials for {library_name}")
+            print(f"✓ Card: {card_number[:4]}****{card_number[-4:]}\n")
         except FileNotFoundError as e:
             print(f"✗ {e}")
             return False
 
         # Extract token
         try:
-            token = self.extract_token_from_browser(card_number, pin, headless=headless)
+            token = self.extract_token_from_browser(library_name, card_number, pin, headless=headless)
         except Exception as e:
             print(f"\n✗ Failed to extract token: {e}")
             return False
@@ -373,14 +442,15 @@ Examples:
         print("⚠ WARNING: Credentials will be stored in PLAIN TEXT")
         print(f"Location: {refresher.credentials_file}\n")
 
+        library_name = input("Library name (as it appears in Libby search): ").strip()
         card_number = input("Library card number: ").strip()
         pin = input("Library card PIN: ").strip()
 
-        if not card_number or not pin:
-            print("✗ Card number and PIN are required")
+        if not library_name or not card_number or not pin:
+            print("✗ Library name, card number, and PIN are required")
             sys.exit(1)
 
-        refresher.save_credentials(card_number, pin)
+        refresher.save_credentials(library_name, card_number, pin)
         print("\n✓ Setup complete! Run without --setup to refresh token.")
 
     else:
