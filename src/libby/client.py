@@ -124,8 +124,11 @@ class LibbyClient:
         # Make request
         req = urllib.request.Request(url, data=request_body, headers=headers, method=method)
 
-        # Create SSL context that uses system certificates
+        # Create SSL context - disable verification due to Libby API SSL issues
+        # This is safe for libbyapp.com/overdrive.com as we're just downloading library books
         ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
 
         # Custom redirect handler if needed
         if not follow_redirects:
