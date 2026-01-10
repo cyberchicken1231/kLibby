@@ -122,7 +122,24 @@ def extract_token_easy():
         # Save to kLibby
         print("\n💾 Saving token to kLibby...")
         client = LibbyClient()
+
+        print(f"  Settings file: {client.settings_file}")
+        print(f"  Token preview: {token[:50]}...")
+
         client.set_browser_token(token, verify=False)
+
+        # Verify it was saved
+        import base64
+        saved_token = client.identity_token
+        if saved_token == token:
+            parts = saved_token.split('.')
+            payload = parts[1] + '=' * (4 - len(parts[1]) % 4)
+            decoded_saved = json.loads(base64.b64decode(payload))
+            print(f"  ✓ Token saved successfully!")
+            print(f"  ✓ Saved chip ID: {decoded_saved['chip']['id']}")
+            print(f"  ✓ Saved accounts: {decoded_saved['chip']['accounts']}")
+        else:
+            print(f"  ✗ WARNING: Token mismatch after save!")
 
         print("\n✅ SUCCESS! Token saved to kLibby!")
         print("\nYou can now:")
