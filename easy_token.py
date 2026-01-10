@@ -51,9 +51,14 @@ def extract_token_easy():
         print("  2. Click 'Sign In with library card'")
         print("  3. Enter your card number and PIN")
         print("  4. Click on ANY book in your shelf")
-        print("\nWe'll be watching for the Authorization token...")
-        print("(This window will update when we find it)")
+        print("\nThen come back here and press Enter...")
         print("=" * 60)
+
+        input("\nPress Enter AFTER you've signed in and clicked a book: ")
+
+        print("\n🔍 Now searching for your token in network logs...")
+        print("(Give it a few seconds...)")
+        time.sleep(2)
 
         # Monitor network logs for Authorization token
         token = None
@@ -83,9 +88,29 @@ def extract_token_easy():
                                 # Extract token (remove 'Bearer ' prefix)
                                 extracted = auth_header.replace('Bearer ', '').strip()
                                 if len(extracted) > 100:  # Valid tokens are long
-                                    token = extracted
-                                    print(f"\n✓ FOUND IT! Token captured (length: {len(token)})")
-                                    break
+                                    # Validate token has linked accounts (not anonymous)
+                                    try:
+                                        import base64
+                                        parts = extracted.split('.')
+                                        if len(parts) == 3:
+                                            payload = parts[1]
+                                            padding = 4 - len(payload) % 4
+                                            if padding != 4:
+                                                payload += '=' * padding
+                                            decoded = base64.b64decode(payload).decode('utf-8')
+                                            token_data = json.loads(decoded)
+                                            accounts = token_data.get('chip', {}).get('accounts', [])
+
+                                            # Only accept tokens with linked library accounts
+                                            if accounts and len(accounts) > 0:
+                                                token = extracted
+                                                print(f"\n✓ FOUND IT! Token captured (length: {len(token)})")
+                                                print(f"  ✓ Linked accounts: {len(accounts)}")
+                                                break
+                                            else:
+                                                print(f"  ⊘ Skipping token (no linked accounts - not signed in yet)")
+                                    except Exception:
+                                        pass  # Skip invalid tokens
                 except (json.JSONDecodeError, KeyError):
                     continue
 
